@@ -1,8 +1,8 @@
 #include "bigint.h"
 
 int main(){
-    // 129 should trigger assertion
-    Storage<129> s("16");
-    Storage<129> n(23);
-    return 0;
+
+    //Initialising empty array
+    myuint<128> m;
+    myuint<128> n(2);
 }
