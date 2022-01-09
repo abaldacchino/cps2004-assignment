@@ -19,9 +19,12 @@ class Node{
         std::set<std::shared_ptr<Node<T>>> children;  //node (partly) owns all of its children
         std::vector<std::weak_ptr<Node<T>>> parents;     //node contains weak reference to its parents
         T data; //data stored in node
-        bool visited;   //variable to make graph calculations easier
+
+        //variables to be accessed by DAG class for calculations
+        bool visited = false;   
+        bool init = false;
     public:
-        //Default Constrctor - creates a node with no data
+        //Default Constrctor - creates a node with empty root set
         Node(){}
 
         //Constructor - creates a node with data specified in parameters
@@ -72,5 +75,57 @@ class Node{
         //Returns true if parameter node is a child, false otherwise
         bool contains_child(std::shared_ptr<Node<T>> child){
             return children.contains(child);
+        }
+
+        //returns bool variable visited
+        bool get_visited(){
+            return visited;
+        }
+
+        //sets bool variable visited
+        void set_visited(bool visited){
+            this->visited=visited;
+        }
+
+        //returns bool variable init
+        bool get_init(){
+            return init;
+        }
+
+        //sets bool variable init
+        void set_visited(bool init){
+            this->init=init;
+        }
+
+        bool delete_node_with_value(T data){
+            //Saving time -- if node already visited, no need to check again
+            if(visited)return false;
+
+            visited = true;
+
+            visited = false;
+        }
+};
+
+
+// Defining Edge class - used to construct the DAG
+template<class T>
+class Edge{
+    private:
+        //Pointers are shared as a different edge may also have ownership of parent/child
+        std::shared_ptr<Node<T>> parent;
+        std::shared_ptr<Node<T>> child;
+    public:
+        Edge(std::shared_ptr<Node<T>> parent, std::shared_ptr<Node<T>> child){
+            this->parent = parent;
+            this->child = child;
+        }
+
+        std::shared_ptr<Node<T>> get_parent(){
+            return parent;
+        }
+        
+        std::shared_ptr<Node<T>> get_child(){
+            return child;
         }
 };

@@ -21,6 +21,7 @@ class myuint{
         myuint(uint);
         myuint(std::string);
         std::string to_string();
+        std::string get_binary_rep();
 };
 
 //Default constructor - creates structure with value 0
