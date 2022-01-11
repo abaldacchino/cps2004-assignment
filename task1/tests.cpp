@@ -170,25 +170,13 @@ MU_CUSTOM_TEST_END
 
 // DAG Tests
 MU_CUSTOM_TEST_START(int_create_DAG)
-    auto n1 = std::make_shared<Node<int>>(1);
-    auto n2 = std::make_shared<Node<int>>(2);
-    auto n3 = std::make_shared<Node<int>>(10);
-    auto n4 = std::make_shared<Node<int>>(3);
-    auto n5 = std::make_shared<Node<int>>(3);
-
-    std::cout << "n1" << n1 << std::endl;
-    std::cout << "n2" << n2 << std::endl;
-    std::cout << "n3" << n3 << std::endl;
-    std::cout << "n4" << n4 << std::endl;
-
-    Edge<int>* edge1 = new Edge<int>(n1, n2);
-    Edge<int>* edge2 = new Edge<int>(n3, n4);
-    Edge<int>* edge3 = new Edge<int>(n4, n5);
-
+    Edge<int> e1(1, 2);
+    Edge<int> e2(2, 3);
+    Edge<int> e3(4, 3);
     std::vector<Edge<int>> v;
-    v.push_back(*edge1); 
-    v.push_back(*edge2);
-    v.push_back(*edge3);
+    v.push_back(e1);
+    v.push_back(e2);
+    v.push_back(e3);
 
     DAG<int>* dag = new DAG<int>(v);
 MU_CUSTOM_TEST_END
