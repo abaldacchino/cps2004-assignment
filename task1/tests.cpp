@@ -170,15 +170,18 @@ MU_CUSTOM_TEST_END
 
 // DAG Tests
 MU_CUSTOM_TEST_START(int_create_DAG)
-    Edge<int> e1(1, 2);
-    Edge<int> e2(2, 3);
-    Edge<int> e3(4, 3);
     std::vector<Edge<int>> v;
-    v.push_back(e1);
-    v.push_back(e2);
-    v.push_back(e3);
+    v.push_back(Edge<int>(4, 3));
+    v.push_back(Edge<int>(4, 5));
+    v.push_back(Edge<int>(5, 4));
 
     DAG<int>* dag = new DAG<int>(v);
+
+    bool initialised = dag->is_empty();
+    std::cout << initialised << std::endl;
+    std::vector<Edge<int>> v2 = dag->get_edges();
+    
+    
 MU_CUSTOM_TEST_END
 
 MU_TEST_SUITE(create_node){

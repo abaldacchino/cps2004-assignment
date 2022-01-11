@@ -72,7 +72,7 @@ class DAG{
         to these edges. 
         If invalid (ie there are cycles) DAG is initialised with roots being empty. 
         */
-        DAG(std::vector<Edge<T>> edges){
+        DAG(std::vector<Edge<T>> &edges){
             //Checking the graph contains no loops (node pointing to itself)
             for(auto edge : edges){
                 if(edge.get_parent()==edge.get_child())return;
@@ -139,10 +139,10 @@ class DAG{
                 //deletes roots -- should remove all ownership of nodes
                 roots.clear();  
                 std::cout << "no roots" << std::endl;
-            }
-
-            for(auto root: roots){
-                std::cout << root <<" "<< root->get_data() << std::endl;
+            }else{
+                //DAG takes FULL ownership of nodes
+                //hence ownership of vector edges must be removed
+                edges.clear();
             }
         }
 
@@ -154,6 +154,27 @@ class DAG{
             //calls destructor of the roots - recursively freeing all allocated nodes
             roots.clear();  
         }
+
+        bool is_empty(){
+            return roots.empty();
+        }
+
+        /* Method to get edges of a DAG
+           Calls Node.get_edges() recursively in order to traverse DAG
+        */
+        std::vector<Edge<T>> get_edges() const{
+            std::set<std::shared_ptr<Node<T>>> visited_nodes;
+            std::vector<Edge<T>> edges;
+
+            for(auto root : roots){
+                //No need to add root to visited_nodes, since graph acyclic
+                root->get_edges(visited_nodes, edges);
+            }
+
+            return edges;
+        }
+
+        
 
 };
 

@@ -4,6 +4,28 @@
 #include <memory>
 #include <iostream>
 
+// Defining Edge class - used to construct the DAG
+template<class T>
+class Edge{
+    private:
+        T parent;
+        T child;
+    public:
+        Edge(T parent, T child){
+            this->parent = parent;
+            this->child = child;
+        }
+
+        T get_parent() const{
+            return parent;
+        }
+        
+        T get_child() const{
+            return child;
+        }
+};
+
+
 //Node class - defines a template of a node
 //Stores a single node in the graph along with any data it contains
 //T is not assumed to be unique
@@ -36,7 +58,7 @@ class Node{
         }
 
         //Method to get data of type T from an individual node
-        T get_data(){
+        T get_data() const{
             return data;
         }
 
@@ -58,7 +80,7 @@ class Node{
         }
 
         //Returns true if parameter node is a parent, false otherwise
-        bool contains_parent(std::shared_ptr<Node<T>> parent){
+        bool contains_parent(std::shared_ptr<Node<T>> parent) const{
             for(auto parent_iter : parents){
                 //Gets reference from weak_ptr to compare to parent parameter
                 auto shared_rep = parent_iter.lock();
@@ -69,29 +91,22 @@ class Node{
         }
         
         //Returns true if parameter node is a child, false otherwise
-        bool contains_child(std::shared_ptr<Node<T>> child){
+        bool contains_child(std::shared_ptr<Node<T>> child) const{
             return children.contains(child);
         }
-};
 
+        void get_edges(std::set<std::shared_ptr<Node<T>>> visited_nodes, std::vector<Edge<T>> &edges) const{
+            for(auto child : children){
+                Edge<T> e(data, child->get_data());
+                edges.push_back(e);
 
-// Defining Edge class - used to construct the DAG
-template<class T>
-class Edge{
-    private:
-        T parent;
-        T child;
-    public:
-        Edge(T parent, T child){
-            this->parent = parent;
-            this->child = child;
-        }
-
-        T get_parent(){
-            return parent;
-        }
-        
-        T get_child(){
-            return child;
+                //If node has not been visited before must be traversed to get edges
+                if(visited_nodes.find(child) == visited_nodes.end()){
+                    child->get_edges(visited_nodes, edges);
+                    visited_nodes.insert(child);
+                }
+            }
         }
 };
+
+
