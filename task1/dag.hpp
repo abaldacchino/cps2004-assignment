@@ -18,10 +18,10 @@ class DAG{
         /* Method used to initialise DAG recursively
            Should only be accessed internally (by DAG object)
         */
-        bool init_node(std::shared_ptr<Node<T>> node, std::vector<Edge<T>> edges, 
+        bool init_node(std::shared_ptr<Node<T>> node, const std::vector<Edge<T>> &edges, 
                        std::map<T, std::shared_ptr<Node<T>>> nodes,
-                       std::map<std::shared_ptr<Node<T>>, bool> visited,
-                       std::map<std::shared_ptr<Node<T>>, bool> initialised){
+                       std::map<std::shared_ptr<Node<T>>, bool> &visited,
+                       std::map<std::shared_ptr<Node<T>>, bool> &initialised){
 
             //Node already initialised and no cycles found in the subgraph
             //Hence subgraph is valid (and already initialised) so does not need to be traversed
@@ -135,10 +135,15 @@ class DAG{
                 }
             }
 
+            //Checks that each node has been initialised
+            //if not, there exists a loop unaccessible by roots
+            for(auto const& pair : initialised){
+                if(!pair.second)has_cycles=true;
+            }
+
             if(has_cycles){
                 //deletes roots -- should remove all ownership of nodes
                 roots.clear();  
-                std::cout << "no roots" << std::endl;
             }else{
                 //DAG takes FULL ownership of nodes
                 //hence ownership of vector edges must be removed
@@ -157,6 +162,28 @@ class DAG{
 
         bool is_empty(){
             return roots.empty();
+        }
+
+        /* Method to remove a node from DAG
+           All children pointed to by said node will become unallocated unless
+           another node is pointing to them.
+           If node found, function returns number of times it is references 
+           (ie. number of parents it had, or 1 in case of root nodes).
+           If node not found, function returns 0.
+        */
+        int remove_node(T data){
+            auto match = [&data](auto const& x) { return (x->get_data()) == data; };
+            auto count = std::erase_if(roots, match);
+
+            // If node is a root it is only reference once
+            // hence it makes sense to return without checking rest of graph
+            if(count >0)return count;
+
+            bool found = false;
+            for(auto root : roots){
+                count += root->remove_node(data);
+            }
+            return count;
         }
 
         /* Method to get edges of a DAG

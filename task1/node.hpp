@@ -23,6 +23,14 @@ class Edge{
         T get_child() const{
             return child;
         }
+
+        bool operator== (const Edge &rhs) const{
+            return (parent==rhs.get_parent() && child==rhs.get_child());
+        }
+
+        bool operator!=(const Edge &rhs) const {
+            return !(*this == rhs);
+        }
 };
 
 
@@ -63,7 +71,7 @@ class Node{
         }
 
         //Method to set data of type T in node
-        void set_data(T data){
+        void set_data(const T data){
             this->data = data;
         }
 
@@ -80,7 +88,7 @@ class Node{
         }
 
         //Returns true if parameter node is a parent, false otherwise
-        bool contains_parent(std::shared_ptr<Node<T>> parent) const{
+        bool contains_parent(const std::shared_ptr<Node<T>> parent) const{
             for(auto parent_iter : parents){
                 //Gets reference from weak_ptr to compare to parent parameter
                 auto shared_rep = parent_iter.lock();
@@ -91,11 +99,22 @@ class Node{
         }
         
         //Returns true if parameter node is a child, false otherwise
-        bool contains_child(std::shared_ptr<Node<T>> child) const{
+        bool contains_child(const std::shared_ptr<Node<T>> child) const{
             return children.contains(child);
         }
 
-        void get_edges(std::set<std::shared_ptr<Node<T>>> visited_nodes, std::vector<Edge<T>> &edges) const{
+        int remove_node(T data){
+            auto match = [&data](auto const& x) { return (x->get_data()) == data; };
+            auto count = std::erase_if(children, match);
+
+            //Traverses children to delete the node if present
+            for(auto child : children){
+                count += child->remove_node(data);
+            }
+            return count;
+        }
+
+        void get_edges(std::set<std::shared_ptr<Node<T>>> &visited_nodes, std::vector<Edge<T>> &edges) const{
             for(auto child : children){
                 Edge<T> e(data, child->get_data());
                 edges.push_back(e);

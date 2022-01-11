@@ -167,21 +167,223 @@ MU_CUSTOM_TEST_START(int_add_child_to_ten_nodes)
     
 MU_CUSTOM_TEST_END
 
-
 // DAG Tests
-MU_CUSTOM_TEST_START(int_create_DAG)
+// Create DAG Tests
+MU_CUSTOM_TEST_START(int_create_valid_2node_DAG)
+    std::vector<Edge<int>> v;
+    v.push_back(Edge<int>(4, 3));
+
+    DAG<int> dag(v);
+    mu_custom_check(v.empty(), "Vector should be cleared of contents- ownership now belongs to DAG", 1, 2);
+    mu_custom_check(!dag.is_empty(), "DAG should not be empty- initialisation should be successful", 2, 2);
+MU_CUSTOM_TEST_END
+
+MU_CUSTOM_TEST_START(int_create_valid_6node_DAG)
     std::vector<Edge<int>> v;
     v.push_back(Edge<int>(4, 3));
     v.push_back(Edge<int>(4, 5));
-    v.push_back(Edge<int>(5, 4));
+    v.push_back(Edge<int>(5, 9));
+    v.push_back(Edge<int>(10, 9));
+    v.push_back(Edge<int>(10, 1));
+    v.push_back(Edge<int>(9, 1));
 
-    DAG<int>* dag = new DAG<int>(v);
+    DAG<int> dag(v);
+    mu_custom_check(v.empty(), "Vector should be cleared of contents- ownership now belongs to DAG", 1, 2);
+    mu_custom_check(!dag.is_empty(), "DAG should not be empty- initialisation should be successful", 2, 2);
+MU_CUSTOM_TEST_END
 
-    bool initialised = dag->is_empty();
-    std::cout << initialised << std::endl;
-    std::vector<Edge<int>> v2 = dag->get_edges();
-    
-    
+
+MU_CUSTOM_TEST_START(int_create_valid_20node_DAG)
+    std::vector<Edge<int>> v;
+    //Creating most unbalanced tree
+    for(int i=1; i<20; i++){
+        v.push_back(Edge<int>(i, i+1));
+    }
+
+    DAG<int> dag(v);
+    mu_custom_check(v.empty(), "Vector should be cleared of contents- ownership now belongs to DAG", 1, 2);
+    mu_custom_check(!dag.is_empty(), "DAG should not be empty- initialisation should be successful", 2, 2);
+MU_CUSTOM_TEST_END
+
+MU_CUSTOM_TEST_START(int_create_invalid_DAG_cycle)
+    std::vector<Edge<int>> v1;
+    //Cycle between 4->3->5->4->3... disconnected from rest of graph
+    v1.push_back(Edge<int>(4, 3));  
+    v1.push_back(Edge<int>(3, 5));
+    v1.push_back(Edge<int>(5, 4));
+    v1.push_back(Edge<int>(10, 11));
+
+    DAG<int> dag1(v1);
+    mu_custom_check(!v1.empty(), "Vector should not be cleared of contents as DAG invalid", 1, 10);
+    mu_custom_check(dag1.is_empty(), "DAG should be empty as edges contain cycles", 2, 10);
+
+    std::vector<Edge<int>> v2;
+    //Cycle between 4->3->4->3... disconnected from rest of graph
+    v2.push_back(Edge<int>(4, 3));  
+    v2.push_back(Edge<int>(3, 4));
+    v2.push_back(Edge<int>(11, 12));
+    v2.push_back(Edge<int>(10, 4));
+    v2.push_back(Edge<int>(10, 2));
+
+    DAG<int> dag2(v2);
+    mu_custom_check(!v2.empty(), "Vector should not be cleared of contents as DAG invalid", 3, 10);
+    mu_custom_check(dag2.is_empty(), "DAG should be empty as edges contain cycles", 4, 10);
+
+    std::vector<Edge<int>> v3;
+    //Cycle between 4->3-> ... connected to rest of graph by root 10
+    v3.push_back(Edge<int>(4, 3));  
+    v3.push_back(Edge<int>(3, 4));
+    v3.push_back(Edge<int>(11, 12));
+    v3.push_back(Edge<int>(10, 11));
+    v3.push_back(Edge<int>(10, 4));
+
+    DAG<int> dag3(v3);
+    mu_custom_check(!v3.empty(), "Vector should not be cleared of contents as DAG invalid", 5, 10);
+    mu_custom_check(dag3.is_empty(), "DAG should be empty as edges contain cycles", 6, 10);
+
+    std::vector<Edge<int>> v4;
+    //Cycle between 4->6->1->2->4 ... connected to rest of graph by root 10
+    v4.push_back(Edge<int>(6, 1));
+    v4.push_back(Edge<int>(1, 2));
+    v4.push_back(Edge<int>(4, 6));  
+    v4.push_back(Edge<int>(2, 4));
+    v4.push_back(Edge<int>(10, 4));
+    v4.push_back(Edge<int>(10, 11));
+
+    DAG<int> dag4(v4);
+    mu_custom_check(!v4.empty(), "Vector should not be cleared of contents as DAG invalid", 7, 10);
+    mu_custom_check(dag4.is_empty(), "DAG should be empty as edges contain cycles", 8, 10);
+
+    std::vector<Edge<int>> v5;
+    //Cycle between 1->2->3->4->5->6->7->8->9->1-> ... 
+    v5.push_back(Edge<int>(3, 4));
+    v5.push_back(Edge<int>(7, 8));
+    v5.push_back(Edge<int>(9, 1));
+    v5.push_back(Edge<int>(1, 2));
+    v5.push_back(Edge<int>(6, 7));
+    v5.push_back(Edge<int>(4, 5));  
+    v5.push_back(Edge<int>(2, 3));
+    v5.push_back(Edge<int>(5, 6));
+    v5.push_back(Edge<int>(8, 9));
+
+    DAG<int> dag5(v5);
+    mu_custom_check(!v5.empty(), "Vector should not be cleared of contents as DAG invalid", 9, 10);
+    mu_custom_check(dag5.is_empty(), "DAG should be empty as edges contain cycles", 10, 10);
+
+
+MU_CUSTOM_TEST_END
+
+//A loop is an instance of a node pointing to itself
+MU_CUSTOM_TEST_START(int_create_invalid_DAG_loop)
+    std::vector<Edge<int>> v1;
+    //Graph with 1 node, with loop 1->1
+    v1.push_back(Edge<int>(1, 1));  
+
+    DAG<int> dag1(v1);
+    mu_custom_check(!v1.empty(), "Vector should not be cleared of contents as DAG invalid", 1, 4);
+    mu_custom_check(dag1.is_empty(), "DAG should be empty as edges contain a loop", 2, 4);
+
+    std::vector<Edge<int>> v2;
+    //Loop with node 2->2 in otherwise valid graph
+    v2.push_back(Edge<int>(4, 3));  
+    v2.push_back(Edge<int>(3, 11));
+    v2.push_back(Edge<int>(11, 12));
+    v2.push_back(Edge<int>(2, 2));
+    v2.push_back(Edge<int>(10, 2));
+
+    DAG<int> dag2(v2);
+    mu_custom_check(!v2.empty(), "Vector should not be cleared of contents as DAG invalid", 3, 4);
+    mu_custom_check(dag2.is_empty(), "DAG should be empty as edges contain a loop", 4, 4);
+MU_CUSTOM_TEST_END
+
+//Remove Node test
+MU_CUSTOM_TEST_START(int_remove_node)
+
+    //Seems to be working - but proper tests need to be written
+    std::vector<Edge<int>> v;
+    v.push_back(Edge<int>(4, 3));
+    v.push_back(Edge<int>(12, 3));
+    v.push_back(Edge<int>(12, 7));
+    v.push_back(Edge<int>(3, 5));
+    v.push_back(Edge<int>(4, 5));
+    v.push_back(Edge<int>(5, 9));
+    v.push_back(Edge<int>(10, 9));
+    v.push_back(Edge<int>(10, 1));
+    v.push_back(Edge<int>(9, 1));
+
+    DAG<int> dag(v);
+    dag.remove_node(3);
+    auto edges = dag.get_edges();
+
+    for(auto e : edges){
+        std::cout << e.get_parent() <<" " <<e.get_child() << std::endl;
+    }
+
+MU_CUSTOM_TEST_END  
+
+//Get edges test
+MU_CUSTOM_TEST_START(int_get_edges_2node_DAG)
+    std::vector<Edge<int>> edges;
+    Edge<int> e1(4, 3);
+    edges.push_back(e1);
+
+    DAG<int> dag(edges);
+    auto returned_edges = dag.get_edges();
+
+    mu_custom_check(returned_edges.size() ==1, "1 edge in DAG created", 1, 2);
+    mu_custom_check(*returned_edges.begin() ==e1, "Edges should match edges initialised", 2, 2);
+MU_CUSTOM_TEST_END
+
+MU_CUSTOM_TEST_START(int_get_edges_6node_DAG)
+    std::vector<Edge<int>> edges;
+    edges.push_back(Edge<int>(4, 3));
+    edges.push_back(Edge<int>(4, 5));
+    edges.push_back(Edge<int>(5, 9));
+    edges.push_back(Edge<int>(10, 9));
+    edges.push_back(Edge<int>(10, 1));
+    edges.push_back(Edge<int>(9, 1));
+
+    auto edges_copy = edges;
+
+    DAG<int> dag(edges);
+    auto returned_edges = dag.get_edges();
+
+    mu_custom_check(returned_edges.size() ==6, "6 edges in DAG created", 1, 7);
+
+    //Checking that each edge is present
+    int i=2;
+    for(auto edge : edges_copy){
+        bool found = false;
+        for(auto ret_edge : returned_edges){
+            if(ret_edge == edge)found=true;
+        }
+        mu_custom_check(found, "Edges should match edges initialised", i++, 7);
+    }
+MU_CUSTOM_TEST_END
+
+
+MU_CUSTOM_TEST_START(int_get_edges_20node_DAG)
+    std::vector<Edge<int>> edges;
+    //Creating most unbalanced tree
+    for(int i=1; i<20; i++){
+        edges.push_back(Edge<int>(i, i+1));
+    }
+    auto edges_copy = edges;
+    std::cout << edges_copy.size() << std::endl;
+    DAG<int> dag(edges);
+    auto returned_edges = dag.get_edges();
+
+    mu_custom_check(returned_edges.size() ==19, "19 edges in DAG created", 1, 20);
+
+    //Checking that each edge is present
+    int i=2;
+    for(auto edge : edges_copy){
+        bool found = false;
+        for(auto ret_edge : returned_edges){
+            if(ret_edge == edge)found=true;
+        }
+        mu_custom_check(found, "Edges should match edges initialised", i++, 20);
+    }
 MU_CUSTOM_TEST_END
 
 MU_TEST_SUITE(create_node){
@@ -211,28 +413,25 @@ MU_TEST_SUITE(add_contains_child){
 }
 
 MU_TEST_SUITE(create_DAG){
-	MU_RUN_TEST(int_create_DAG);
+	MU_RUN_TEST(int_create_valid_2node_DAG);
+	MU_RUN_TEST(int_create_valid_6node_DAG);
+	MU_RUN_TEST(int_create_valid_20node_DAG);
+    MU_RUN_TEST(int_create_invalid_DAG_cycle);
+    MU_RUN_TEST(int_create_invalid_DAG_loop);
+}
+
+MU_TEST_SUITE(get_edges){
+    MU_RUN_TEST(int_get_edges_2node_DAG);
+    MU_RUN_TEST(int_get_edges_6node_DAG);
+    MU_RUN_TEST(int_get_edges_20node_DAG);
+
+}
+
+MU_TEST_SUITE(remove_node){
+    MU_RUN_TEST(int_remove_node);
 }
 
 int main(){
-    // //testing pointer behaviour
-    // auto m = std::make_shared<int>(10);
-    // auto k = m;
-    // std::cout << m << std::endl;
-    // std::cout << *m << std::endl;
-    // std::weak_ptr<int> w = m;
-
-    // m.reset();
-    // k.reset();
-    // auto self = w.lock();
-    // if(self){
-    //     std::cout << self << std::endl;
-    //     std::cout << *self << std::endl;
-    // }
-    
-    //  //   std::cout << "k"<<k << std::endl;
-    //   //  std::cout << "k"<<*k << std::endl;
-
     //NODE tests
     MU_RUN_SUITE(create_node);
     MU_RUN_SUITE(get_data);
@@ -241,6 +440,8 @@ int main(){
 
     //DAG tests
     MU_RUN_SUITE(create_DAG);
+    MU_RUN_SUITE(remove_node);
+    MU_RUN_SUITE(get_edges);
 
     MU_REPORT();
     return MU_EXIT_CODE;
