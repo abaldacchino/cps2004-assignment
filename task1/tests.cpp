@@ -593,7 +593,6 @@ MU_TEST_SUITE(get_edges){
     MU_RUN_TEST(int_get_edges_2node_DAG);
     MU_RUN_TEST(int_get_edges_6node_DAG);
     MU_RUN_TEST(int_get_edges_20node_DAG);
-
 }
 
 MU_TEST_SUITE(remove_node){
