@@ -297,29 +297,198 @@ MU_CUSTOM_TEST_START(int_create_invalid_DAG_loop)
 MU_CUSTOM_TEST_END
 
 //Remove Node test
-MU_CUSTOM_TEST_START(int_remove_node)
-
-    //Seems to be working - but proper tests need to be written
+MU_CUSTOM_TEST_START(int_remove_node_root_shared_children)
     std::vector<Edge<int>> v;
-    v.push_back(Edge<int>(4, 3));
-    v.push_back(Edge<int>(12, 3));
-    v.push_back(Edge<int>(12, 7));
-    v.push_back(Edge<int>(3, 5));
-    v.push_back(Edge<int>(4, 5));
-    v.push_back(Edge<int>(5, 9));
-    v.push_back(Edge<int>(10, 9));
-    v.push_back(Edge<int>(10, 1));
-    v.push_back(Edge<int>(9, 1));
+    v.push_back(Edge<int>(10, 3));
+    v.push_back(Edge<int>(4, 3));   //3 belongs to 4 and 10 - node will not be deleted, but edge will
+    v.push_back(Edge<int>(4, 2));   //2 belongs only to 4 - node will be deleted
+    v.push_back(Edge<int>(2, 7));   //7 belongs to 2 - node will be deleted
+    v.push_back(Edge<int>(1, 10));
+    v.push_back(Edge<int>(3, 15));  //15 belongs to 3 - will not be deleted since 3 not deleted
+
+    std::vector<Edge<int>> expected;
+    expected.push_back(Edge<int>(10, 3));
+    expected.push_back(Edge<int>(1, 10));
+    expected.push_back(Edge<int>(3, 15));  //15 belongs to 3 - will not be deleted
 
     DAG<int> dag(v);
-    dag.remove_node(3);
-    auto edges = dag.get_edges();
+    int count = dag.remove_node(4);
+    auto returned_edges = dag.get_edges();
 
-    for(auto e : edges){
-        std::cout << e.get_parent() <<" " <<e.get_child() << std::endl;
+    mu_custom_check(returned_edges.size() ==3, "3 edges in DAG expected after delete node", 1, 5);
+    mu_custom_check(count==1, "Since root node removed, count expected to be 1", 2, 5);
+
+    //Checking that each edge is present
+    int i=3;
+    for(auto edge : expected){
+        bool found = false;
+        for(auto ret_edge : returned_edges){
+            if(ret_edge == edge)found=true;
+        }
+        mu_custom_check(found, "Edges not deleted should still be present in DAG", i++, 5);
     }
+MU_CUSTOM_TEST_END  
+
+MU_CUSTOM_TEST_START(int_remove_node_root_unique_children)
+    std::vector<Edge<int>> v;
+    v.push_back(Edge<int>(10, 3));  //10 is deleted, 3 is deleted
+    v.push_back(Edge<int>(10, 2));  //10 is deleted, 2 is deleted
+    v.push_back(Edge<int>(1, 10));  //10 belongs uniquely to 1, will be deleted
+    v.push_back(Edge<int>(1, 7));   //7 belongs uniquely to 1, will be deleted
+
+    DAG<int> dag(v);
+    int count = dag.remove_node(1);
+
+    mu_custom_check(dag.is_empty(), "DAG expected to be empty, as all nodes end up deleted", 1, 2);
+    mu_custom_check(count==1, "Since root node removed, count expected to be 1", 2, 2);
 
 MU_CUSTOM_TEST_END  
+
+MU_CUSTOM_TEST_START(int_remove_node_child_one_parent)
+    std::vector<Edge<int>> v;
+    v.push_back(Edge<int>(10, 3));  
+    v.push_back(Edge<int>(3, 2));   //3 is removed, 2 also removed
+    v.push_back(Edge<int>(10, 5));  
+    v.push_back(Edge<int>(7, 5));  
+
+    std::vector<Edge<int>> expected;
+    expected.push_back(Edge<int>(10, 5));  
+    expected.push_back(Edge<int>(7, 5));  
+
+    DAG<int> dag(v);
+    int count = dag.remove_node(3);
+    auto returned_edges = dag.get_edges();
+
+    mu_custom_check(returned_edges.size() ==2, "2 edges in DAG expected after delete node", 1, 4);
+    mu_custom_check(count==1, "3 has one parent, hence count==1", 2, 4);
+
+    //Checking that each edge is present
+    int i=3;
+    for(auto edge : expected){
+        bool found = false;
+        for(auto ret_edge : returned_edges){
+            if(ret_edge == edge)found=true;
+        }
+        mu_custom_check(found, "Edges not deleted should still be present in DAG", i++, 4);
+    }
+MU_CUSTOM_TEST_END  
+
+MU_CUSTOM_TEST_START(int_remove_node_child_two_parents)
+    std::vector<Edge<int>> v;
+    v.push_back(Edge<int>(10, 3));  
+    v.push_back(Edge<int>(3, 2));   //3 removed, 2 removed
+    v.push_back(Edge<int>(3, 4));   //3 removed, so edge removed (4 not removed as is owned by 7)
+    v.push_back(Edge<int>(2, 4));   //2 removed, so edge removed (4 not removed as is owned by 7)
+    v.push_back(Edge<int>(10, 5));  
+    v.push_back(Edge<int>(7, 3));  
+    v.push_back(Edge<int>(7, 4));  
+
+    std::vector<Edge<int>> expected;
+    expected.push_back(Edge<int>(10, 5));  
+    expected.push_back(Edge<int>(7, 4));  
+
+    DAG<int> dag(v);
+    int count = dag.remove_node(3);
+    auto returned_edges = dag.get_edges();
+
+    mu_custom_check(returned_edges.size() ==2, "2 edges in DAG expected after delete node", 1, 4);
+    mu_custom_check(count==2, "3 has two parents, hence count==2", 2, 4);
+
+    //Checking that each edge is present
+    int i=3;
+    for(auto edge : expected){
+        bool found = false;
+        for(auto ret_edge : returned_edges){
+            if(ret_edge == edge)found=true;
+        }
+        mu_custom_check(found, "Edges not deleted should still be present in DAG", i++, 4);
+    }
+MU_CUSTOM_TEST_END  
+
+MU_CUSTOM_TEST_START(int_remove_two_nodes)
+    std::vector<Edge<int>> v;
+    v.push_back(Edge<int>(1, 2));  
+    v.push_back(Edge<int>(1, 3));  
+    v.push_back(Edge<int>(3, 2));  
+    v.push_back(Edge<int>(3, 8));   
+    v.push_back(Edge<int>(3, 6));  
+    v.push_back(Edge<int>(8, 9));   
+    v.push_back(Edge<int>(1, 5));  
+    v.push_back(Edge<int>(7, 5));  
+    v.push_back(Edge<int>(7, 10));  
+    v.push_back(Edge<int>(5, 6));  
+
+    std::vector<Edge<int>> expected_rm3;
+    expected_rm3.push_back(Edge<int>(1, 2));  
+    expected_rm3.push_back(Edge<int>(1, 5));  
+    expected_rm3.push_back(Edge<int>(7, 5));  
+    expected_rm3.push_back(Edge<int>(5, 6));  
+    expected_rm3.push_back(Edge<int>(7, 10));  
+
+    std::vector<Edge<int>> expected_rm5;
+    expected_rm5.push_back(Edge<int>(1, 2));  
+    expected_rm5.push_back(Edge<int>(7, 10));  
+
+    DAG<int> dag(v);
+    int count = dag.remove_node(3);
+    auto returned_edges = dag.get_edges();
+
+    int i=1;
+    mu_custom_check(returned_edges.size() ==5, "5 edges in DAG expected after delete node 3", i++, 11);
+    mu_custom_check(count==1, "3 had one parent, hence count==1", i++, 11);
+
+    //Checking that each edge is present
+    for(auto edge : expected_rm3){
+        bool found = false;
+        for(auto ret_edge : returned_edges){
+            if(ret_edge == edge)found=true;
+        }
+        mu_custom_check(found, "Edges not deleted should still be present in DAG", i++, 11);
+    }
+
+    count = dag.remove_node(5);
+    returned_edges = dag.get_edges();
+
+    mu_custom_check(returned_edges.size() ==2, "2 edges in DAG expected after delete node 5", i++, 11);
+    mu_custom_check(count==2, "5 had two parent, hence count==2", i++, 11);
+
+    //Checking that each edge is present
+    for(auto edge : expected_rm5){
+        bool found = false;
+        for(auto ret_edge : returned_edges){
+            if(ret_edge == edge)found=true;
+        }
+        mu_custom_check(found, "Edges not deleted should still be present in DAG", i++, 11);
+    }
+MU_CUSTOM_TEST_END 
+
+MU_CUSTOM_TEST_START(int_remove_node_not_present)
+    std::vector<Edge<int>> edges;
+    edges.push_back(Edge<int>(4, 3));
+    edges.push_back(Edge<int>(4, 5));
+    edges.push_back(Edge<int>(5, 9));
+    edges.push_back(Edge<int>(10, 9));
+    edges.push_back(Edge<int>(10, 1));
+    edges.push_back(Edge<int>(9, 1));
+
+    auto edges_copy = edges;
+
+    DAG<int> dag(edges);
+    auto returned_edges = dag.get_edges();
+    int count = dag.remove_node(20);
+
+    mu_custom_check(count ==0, "Node not present to be removed, so count is 0", 1, 7);
+
+    //Checking that each edge is present
+    int i=2;
+    for(auto edge : edges_copy){
+        bool found = false;
+        for(auto ret_edge : returned_edges){
+            if(ret_edge == edge)found=true;
+        }
+        mu_custom_check(found, "Edges should match edges initialised - as no node deleted", i++, 7);
+    }
+MU_CUSTOM_TEST_END
 
 //Get edges test
 MU_CUSTOM_TEST_START(int_get_edges_2node_DAG)
@@ -428,7 +597,12 @@ MU_TEST_SUITE(get_edges){
 }
 
 MU_TEST_SUITE(remove_node){
-    MU_RUN_TEST(int_remove_node);
+    MU_RUN_TEST(int_remove_node_root_shared_children);
+    MU_RUN_TEST(int_remove_node_root_unique_children);
+    MU_RUN_TEST(int_remove_node_child_one_parent);
+    MU_RUN_TEST(int_remove_node_child_two_parents);
+    MU_RUN_TEST(int_remove_two_nodes);
+    MU_RUN_TEST(int_remove_node_not_present);
 }
 
 int main(){
