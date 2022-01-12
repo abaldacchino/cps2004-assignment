@@ -205,6 +205,20 @@ MU_CUSTOM_TEST_START(int_create_valid_20node_DAG)
     mu_custom_check(!dag.is_empty(), "DAG should not be empty- initialisation should be successful", 2, 2);
 MU_CUSTOM_TEST_END
 
+MU_CUSTOM_TEST_START(string_create_valid_6node_DAG)
+    std::vector<Edge<std::string>> v;
+    v.push_back(Edge<std::string>("Hello", "there"));
+    v.push_back(Edge<std::string>("Hello", "how are"));
+    v.push_back(Edge<std::string>("how are", "you"));
+    v.push_back(Edge<std::string>("Hello", "nice to see"));
+    v.push_back(Edge<std::string>("nice to see", "you"));
+    v.push_back(Edge<std::string>("you", "my friend"));
+
+    DAG<std::string> dag(v);
+    mu_custom_check(v.empty(), "Vector should be cleared of contents- ownership now belongs to DAG", 1, 2);
+    mu_custom_check(!dag.is_empty(), "DAG should not be empty- initialisation should be successful", 2, 2);
+MU_CUSTOM_TEST_END
+
 MU_CUSTOM_TEST_START(int_create_invalid_DAG_cycle)
     std::vector<Edge<int>> v1;
     //Cycle between 4->3->5->4->3... disconnected from rest of graph
@@ -554,6 +568,31 @@ MU_CUSTOM_TEST_START(int_get_edges_20node_DAG)
     }
 MU_CUSTOM_TEST_END
 
+MU_CUSTOM_TEST_START(string_get_edges_6node_DAG)
+    std::vector<Edge<std::string>> v;
+    v.push_back(Edge<std::string>("Hello", "there"));
+    v.push_back(Edge<std::string>("Hello", "how are"));
+    v.push_back(Edge<std::string>("how are", "you"));
+    v.push_back(Edge<std::string>("Hello", "nice to see"));
+    v.push_back(Edge<std::string>("nice to see", "you"));
+    v.push_back(Edge<std::string>("you", "my friend"));
+    auto edges_copy = v;
+
+    DAG<std::string> dag(v);
+    auto returned_edges = dag.get_edges();
+
+    mu_custom_check(returned_edges.size() ==6, "6 edges in DAG created", 1, 7);
+    //Checking that each edge is present
+    int i=2;
+    for(auto edge : edges_copy){
+        bool found = false;
+        for(auto ret_edge : returned_edges){
+            if(ret_edge == edge)found=true;
+        }
+        mu_custom_check(found, "Edges should match edges initialised", i++, 7);
+    }
+MU_CUSTOM_TEST_END
+
 MU_TEST_SUITE(create_node){
 	MU_RUN_TEST(int_create_node);
     MU_RUN_TEST(double_create_node);
@@ -586,12 +625,14 @@ MU_TEST_SUITE(create_DAG){
 	MU_RUN_TEST(int_create_valid_20node_DAG);
     MU_RUN_TEST(int_create_invalid_DAG_cycle);
     MU_RUN_TEST(int_create_invalid_DAG_loop);
+    MU_RUN_TEST(string_create_valid_6node_DAG);
 }
 
 MU_TEST_SUITE(get_edges){
     MU_RUN_TEST(int_get_edges_2node_DAG);
     MU_RUN_TEST(int_get_edges_6node_DAG);
     MU_RUN_TEST(int_get_edges_20node_DAG);
+    MU_RUN_TEST(string_get_edges_6node_DAG);
 }
 
 MU_TEST_SUITE(remove_node){
