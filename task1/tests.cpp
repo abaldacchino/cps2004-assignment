@@ -538,7 +538,6 @@ MU_CUSTOM_TEST_START(int_get_edges_20node_DAG)
         edges.push_back(Edge<int>(i, i+1));
     }
     auto edges_copy = edges;
-    std::cout << edges_copy.size() << std::endl;
     DAG<int> dag(edges);
     auto returned_edges = dag.get_edges();
 
