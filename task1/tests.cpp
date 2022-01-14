@@ -236,7 +236,7 @@ MU_CUSTOM_TEST_START(int_create_invalid_DAG_cycle)
     v2.push_back(Edge<int>(4, 3));  
     v2.push_back(Edge<int>(3, 4));
     v2.push_back(Edge<int>(11, 12));
-    v2.push_back(Edge<int>(10, 4));
+    v2.push_back(Edge<int>(2, 12));
     v2.push_back(Edge<int>(10, 2));
 
     DAG<int> dag2(v2);
