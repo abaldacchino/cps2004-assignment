@@ -232,9 +232,10 @@ MU_CUSTOM_TEST_START(int_create_invalid_DAG_cycle)
     mu_custom_check(dag1.is_empty(), "DAG should be empty as edges contain cycles", 2, 10);
 
     std::vector<Edge<int>> v2;
-    //Cycle between 4->3->4->3... disconnected from rest of graph
+    //Cycle between 4->3->4->3... connected to graph only by out edges
     v2.push_back(Edge<int>(4, 3));  
     v2.push_back(Edge<int>(3, 4));
+    v2.push_back(Edge<int>(4, 10));
     v2.push_back(Edge<int>(11, 12));
     v2.push_back(Edge<int>(2, 12));
     v2.push_back(Edge<int>(10, 2));
