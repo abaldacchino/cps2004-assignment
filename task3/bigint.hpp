@@ -28,6 +28,16 @@ class myuint{
         // stores individual words (of size 64 bits) of the integer
         // with least significant word first
         std::array<word_t, (bits>>6)> words{};
+
+        //Helper functions used in shifts and multiplication
+        //get highest n bits in uint64_t
+        static uint64_t get_hi(uint64_t x, uint n){
+            return x >> (64-n);
+        }
+        //get lowest n bits in uint64_t
+        static uint64_t get_lo(uint64_t x, uint n){
+            return (x << (64-n))>>(64-n);
+        }
         
     public:
         
@@ -41,11 +51,27 @@ class myuint{
             words[0] = num;
         }
 
-        /* String constructor - accepts a string of integers, separated by 
-        a space. Takes each integer in the string to be a single digit in
+        /* String constructor (for base 10) 
+           Accepts a string representation of an integer
+           Behaviour when number too large is undefined
+        */
+        myuint(std::string s){    
+            myuint<bits> ten(10);           //stores value 10 in myuint datatype
+            myuint<bits> ten_power_i(1);
+            for(int i=0; i<s.size(); i++){
+                myuint<bits> buffer(s[i] - '0');   //gets ith digit of string
+                this += buffer * ten_power_i;
+                ten_power_i *=ten;
+            }
+        }
+        
+
+        /* String constructor (for base 64) 
+        Accepts a string of integers, separated by a space. 
+        Takes each integer in the string to be a single digit (base 64) of
         myuint, in little endian format (least significant digit first)
         -- Ignores any excess digits 
-        */
+        
         myuint(std::string s){    
             char *token = strtok(&(s[0]), " ");
             for(word_count_t i=0; i< max_words; i++){
@@ -56,6 +82,8 @@ class myuint{
                 }
             }
         }
+        */
+
 
         // Constructor that accepts array of (base 64) digits
         myuint(std::array<word_t, (bits>>6)> input){    
@@ -372,8 +400,21 @@ class myuint{
             return !(lhs==rhs); 
         }
 
-        //Write to stream 
+        //Write to stream (convert to base 10)
         friend std::ostream& operator<<(std::ostream& os, const myuint<bits>& bigint){
+            //Outputs representation in base 10
+            myuint<bits> ten(10);           //stores value 10 in myuint datatype
+            myuint<bits> digit;             //stores nth digit
+            myuint<bits> result;
+
+            do{
+                digit = result % ten;   //result mod 10 gets the last digit of result
+                os << digit.words[0];   //outputs digit (stored in words[0] since value<10)
+                result /= ten;  //divides result by 10 (effectively right shifting in base 10)
+            }while(!result.is_zero());
+
+            return os;
+            /* Outputs representation in base 64
             for(int i=0; i<bigint.max_words; i++){
                 os << bigint.words[i] << "×2^" << (i>>6);
                 if(i!= bigint.max_words-1){
@@ -381,21 +422,15 @@ class myuint{
                 }
             }
             return os;
+            */
         }
 
-        
-
-        std::string convert_base_10(){
-            return "Not done";
+        //Quick function that returns if value is equal to 0
+        bool is_zero(){
+            for(auto word : words){
+                if(word !=0)return false;
+            }
+            return true;
         }
 };
 
-//get highest n bits in uint64_t
-uint64_t get_hi(uint64_t x, uint n){
-    return x >> (64-n);
-}
-
-//get lowest n bits in uint64_t
-uint64_t get_lo(uint64_t x, uint n){
-    return (x << (64-n))>>(64-n);
-}
