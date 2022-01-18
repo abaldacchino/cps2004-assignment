@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdexcept>
+#include <algorithm>
 
 //UINT64_MAX not guaranteed to be defined
 #ifndef UINT64_MAX 
@@ -61,25 +62,6 @@ class myuint{
                 ten_power_i *=ten;
             }
         }
-        
-
-        /* String constructor (for base 64) 
-        Accepts a string of integers, separated by a space. 
-        Takes each integer in the string to be a single digit (base 64) of
-        myuint, in little endian format (least significant digit first)
-        -- Ignores any excess digits 
-        
-        
-        myuint(std::string s){    
-            char *token = strtok(&(s[0]), " ");
-            for(int i=0; i< words.size(); i++){
-                if(token != NULL){
-                    //stoull throws invalid_argument exception in case of token not being an unsigned integer
-                    words[i] = std::stoull(token);
-                    token = strtok(NULL, " ");
-                }
-            }
-        }*/
 
         // Constructor that accepts array of (base 64) digits
         myuint(std::array<word_t, (bits>>6)> input){    
@@ -180,6 +162,8 @@ class myuint{
 
         // (compound assignment) right shift of this by rhs
         myuint<bits>& operator>>=(const uint& rhs){
+            if(rhs==0)return *this;
+
             // rhs = 64*word_shift + rem
             uint word_shift = (rhs>>6);  //dividing rhs by word length (64)
             uint rem = rhs - (word_shift<<6);    //Finding remainder
@@ -227,6 +211,8 @@ class myuint{
 
         // (compound assignment) left shift of this by rhs
         myuint<bits>& operator<<=(const uint& rhs){
+            if(rhs==0)return *this;
+
             // rhs = 64*word_shift + rem
             uint word_shift = (rhs>>6);  //dividing rhs by word length (64)
             uint rem = rhs - (word_shift<<6);    //Finding remainder
@@ -285,7 +271,7 @@ class myuint{
             for(int i=0; i<words.size(); i++){
                 for(int j=0; j<words.size(); j++){
                     //Resulting multiplication is multiplied by (64)^index
-                    uint index= i+j;
+                    int index= i+j;
 
                     //Any overflow is ignored (making calculation mod bits)
                     if(index>=words.size())continue;
@@ -296,15 +282,14 @@ class myuint{
                     uint64_t s1 = get_lo(words[i], 32)* get_hi(rhs.words[j], 32);
                     uint64_t s2 = get_hi(words[i], 32)* get_lo(rhs.words[j], 32);
 
-
                     s1 += s2;
 
                     myuint<bits> temp;
                     temp.words[index] = s0 + (get_lo(s1, 32) <<32);
-                    if(index+1<words.size()){
+                    if((index+1)<words.size()){
                         uint64_t s3 = get_hi(words[i], 32)* get_hi(rhs.words[j], 32);
-                        //Case of overflow of s1+s2
-                        s3 += s1<s2;
+                        //Case of overflow of s1+s2 (need to increment s3 by 2^32)
+                        s3 += ((uint64_t)(s1<s2))<<32;
                         temp.words[index+1] = s3 + get_hi(s1, 32); 
                     }
                     result+=temp;
@@ -319,20 +304,41 @@ class myuint{
             lhs *=rhs;
             return lhs;
         }
+
+        // Function returns result of division and stores remainder in lhs
+        // Useful for division/remainder operators 
+        // Especially useful when user needs both division and remainder
+        myuint<bits> div_rem(myuint<bits> &lhs, myuint<bits> rhs){
+            if(rhs==0) throw std::overflow_error("Divide by zero exception");
+
+            myuint<bits> count;
+            myuint<bits> one(1);
+
+            int power = (lhs.get_msd() - rhs.get_msd())*64+63;
+
+            //Need to safeguard for overflow here is rhs is very large
+            //Note division might be very inefficient in specific this case
+            if(rhs.get_msd() == words.size()-1)power==0;   
+            
+            while(lhs >= rhs){
+                myuint<bits> rhs_power = rhs << (power);  //rhs left shifted by power
+                myuint<bits> add_count = one << (power);
+                while(lhs >= rhs_power){
+                    lhs -= rhs_power;
+                    count+= add_count;  //increment count by add_count (1^power)
+                    
+                }
+                power--;
+            }
+
+            return count;
+        }
         
 
         // (compound assignment) division of lhs by rhs
         // Long division used
         myuint<bits>& operator/=(myuint<bits> rhs){
-            myuint<bits> count;
-            if(rhs==0) throw std::overflow_error("Divide by zero exception");
-
-            while(*this >= rhs){
-                count++;
-                *this -= rhs;
-                //std::cout << *this << std::endl;
-            }
-            *this =count;
+            *this = div_rem(*this, rhs);
             return *this;
         }
 
@@ -345,15 +351,7 @@ class myuint{
         // modulus function, gives answer to lhs mod rhs
         // Long division used
         myuint<bits>& operator%=(myuint<bits> rhs){
-            myuint<bits> count;
-            if(rhs==0) throw std::overflow_error("Divide by zero exception");
-
-            while(*this >= rhs){
-                count++;
-                *this -= rhs;
-                std::cout << *this << std::endl;
-            }
-
+            div_rem(*this, rhs);
             return *this;
         }
 
@@ -390,28 +388,8 @@ class myuint{
 
         //Write to stream (convert to base 10)
         friend std::ostream& operator<<(std::ostream& os, const myuint<bits>& bigint){
-            // //Outputs representation in base 10
-            // myuint<bits> ten(10);           //stores value 10 in myuint datatype
-            // myuint<bits> digit;             //stores nth digit
-            // myuint<bits> result = bigint;
-
-            // do{
-            //     digit = result % ten;   //result mod 10 gets the last digit of result
-            //     os << digit.words[0];   //outputs digit (stored in words[0] since value<10)
-            //     result /= ten;  //divides result by 10 (effectively right shifting in base 10)
-            // }while(!result.is_zero());
-
-            // return os;
-
-            // Outputs representation in base 64
-            for(int i=0; i<bigint.words.size(); i++){
-                os << bigint.words[i] << "×2^" << (i<<6);
-                if(i!= bigint.words.size()-1){
-                    os << " + ";
-                }
-            }
+            os << bigint.to_string();
             return os;
-            
         }
 
         //Quick function that returns if value is equal to 0
@@ -420,6 +398,1113 @@ class myuint{
                 if(word !=0)return false;
             }
             return true;
+        }
+
+        //Returns most significant digit (ie largest i where words[i] !=0)
+        //Returns -1 if all digits 0
+        int get_msd(){
+            for(int i= words.size()-1; i>=0; i--){
+                if(words[i] !=0)return i;
+            }
+            return -1;
+        }
+
+        //Gets base 10 representation of uint
+        std::string to_string() const {
+            //Outputs representation in base 10
+            myuint<bits> ten(10);           //stores value 10 in myuint datatype
+            myuint<bits> digit;             //stores nth digit
+            myuint<bits> result = *this;
+            std::string base_10 = "";   //empty string to hold base 10 representation
+
+            do{
+                digit = result % ten;   //result mod 10 gets the last digit of result
+                base_10 = std::to_string(digit.words[0]) + base_10;   //adds digit to string
+                result /= ten;  //divides result by 10 (effectively right shifting in base 10)
+            }while(!result.is_zero());
+
+            return base_10;
+        }
+
+};
+
+/************************************************************************************************************
+ * From now on, default templates are specified 
+ * 1/2/4/8 bit integers take 8 bits
+ * 8/16/32/64 bit integers take their respective size bits
+ ************************************************************************************************************/
+
+
+template <>
+class myuint<1>{
+
+    private:
+        uint8_t num =0;
+    public:
+        //Default constructor - creates structure with value 0
+        myuint(){
+        }
+        //Unsigned Integer constructor
+        myuint(uint8_t num){
+            this->num = num;
+        }
+        /* String constructor (for base 10) 
+           Accepts a string representation of an integer
+           Behaviour when number too large is undefined
+        */
+        myuint(std::string s){    
+            num = std::stoul(s);
+        }
+        // Copy assignment
+        myuint<1>& operator=(const myuint<1>& other){
+            // Guard self assignment
+            if (this == &other){
+                return *this;
+            }
+            num = other.num;
+            return *this;
+        }
+        // prefix increment
+        myuint<1>& operator++(){
+            num++;
+            return *this; // return new value by reference
+        }
+        // postfix increment
+        myuint<1> operator++(int){
+            myuint<1> old = *this; // copy old value
+            operator++();  // prefix increment
+            return old;    // return old value
+        }   
+        // prefix decrement
+        myuint<1>& operator--(){
+            num--;
+            return *this; // return new value by reference
+        }
+        // postfix decrement
+        myuint<1> operator--(int){
+            myuint<1> old = *this; // copy old value
+            operator--();  // prefix decrement
+            return old;    // return old value
+        }
+        // (compound assignment) addition of rhs to this
+        myuint<1>& operator+=(const myuint<1>& rhs){
+            num += rhs.num;
+            return *this;
+        }
+        // addition operator reuses compound assignment
+        friend myuint<1> operator+(myuint<1> lhs, const myuint<1>& rhs){
+            lhs+= rhs;
+            return lhs;
+        }
+        // (compound assignment) subtraction of rhs from this
+        myuint<1>& operator-=(const myuint<1>& rhs){
+            num -= rhs.num;
+            return *this;
+        }
+        // subtraction operator reuses compound assignment
+        friend myuint<1> operator-(myuint<1> lhs, const myuint<1>& rhs){
+            lhs-= rhs;
+            return lhs;
+        }
+        // (compound assignment) right shift of this by rhs
+        myuint<1>& operator>>=(const uint& rhs){
+            num >>= rhs;
+            return *this;
+        }
+        // right shift operator reuses compound assignment
+        friend myuint<1> operator>>(myuint<1> lhs, const uint& rhs){
+            lhs>>= rhs;
+            return lhs;
+        }
+        // (compound assignment) left shift of this by rhs
+        myuint<1>& operator<<=(const uint& rhs){
+            num <<= rhs;
+            return *this;
+        }
+        // left shift operator reuses compound assignment
+        friend myuint<1> operator<<(myuint<1> lhs, const uint& rhs){
+            lhs<<= rhs;
+            return lhs;
+        }
+        // Multiplcation of rhs to lhs
+        myuint<1>& operator*=(const myuint<1>& rhs){
+            num *= rhs.num;
+            return *this;
+        }
+        // multiplication operator reuses compound assignment
+        friend myuint<1> operator*(myuint<1> lhs, const myuint<1>& rhs){
+            lhs *=rhs;
+            return lhs;
+        }
+        // (compound assignment) division of lhs by rhs
+        myuint<1>& operator/=(myuint<1> rhs){
+            num /= rhs.num;
+            return *this;
+        }
+        // multiplication operator reuses compound assignment
+        friend myuint<1> operator/(myuint<1> lhs, myuint<1> rhs){
+            lhs /=rhs;
+            return lhs;
+        }
+        // modulus function, gives answer to lhs mod rhs
+        myuint<1>& operator%=(myuint<1> rhs){
+            num %= rhs.num;
+            return *this;
+        }
+        // modulus operator reuses compound assignment
+        friend myuint<1> operator%(myuint<1> lhs, myuint<1> rhs){
+            lhs %=rhs;
+            return lhs;
+        }
+        //Comparison operators
+        inline friend bool operator< (const myuint<1>& lhs, const myuint<1>& rhs){ 
+            return lhs.num < rhs.num;
+        }
+        inline friend bool operator> (const myuint<1>& lhs, const myuint<1>& rhs){ 
+            return rhs < lhs; 
+        }
+        inline friend bool operator<=(const myuint<1>& lhs, const myuint<1>& rhs){ 
+            return !(lhs > rhs); 
+        }
+        inline friend bool operator>=(const myuint<1>& lhs, const myuint<1>& rhs){ 
+            return !(lhs < rhs); 
+        }
+        inline friend bool operator==(const myuint<1>& lhs, const myuint<1>& rhs){ 
+            return lhs.num == rhs.num;
+        }
+        inline friend bool operator!=(const myuint<1>& lhs, const myuint<1>& rhs){ 
+            return !(lhs==rhs); 
+        }
+        //Write to stream (convert to base 10)
+        friend std::ostream& operator<<(std::ostream& os, const myuint<1>& bigint){
+            os << bigint.num;
+            return os;
+        }
+        //Quick function that returns if value is equal to 0
+        bool is_zero(){
+            return num==0;
+        }
+        //Gets base 10 representation of uint
+        std::string to_string() const {
+            return std::to_string(num);
+        }
+};
+template <>
+class myuint<2>{
+    private:
+        uint8_t num =0;
+    public:
+        //Default constructor - creates structure with value 0
+        myuint(){
+        }
+        //Unsigned Integer constructor
+        myuint(uint8_t num){
+            this->num = num;
+        }
+        /* String constructor (for base 10) 
+           Accepts a string representation of an integer
+           Behaviour when number too large is undefined
+        */
+        myuint(std::string s){    
+            num = std::stoul(s);
+        }
+        // Copy assignment
+        myuint<2>& operator=(const myuint<2>& other){
+            // Guard self assignment
+            if (this == &other){
+                return *this;
+            }
+            num = other.num;
+            return *this;
+        }
+        // prefix increment
+        myuint<2>& operator++(){
+            num++;
+            return *this; // return new value by reference
+        }
+        // postfix increment
+        myuint<2> operator++(int){
+            myuint<2> old = *this; // copy old value
+            operator++();  // prefix increment
+            return old;    // return old value
+        }   
+        // prefix decrement
+        myuint<2>& operator--(){
+            num--;
+            return *this; // return new value by reference
+        }
+        // postfix decrement
+        myuint<2> operator--(int){
+            myuint<2> old = *this; // copy old value
+            operator--();  // prefix decrement
+            return old;    // return old value
+        }
+        // (compound assignment) addition of rhs to this
+        myuint<2>& operator+=(const myuint<2>& rhs){
+            num += rhs.num;
+            return *this;
+        }
+        // addition operator reuses compound assignment
+        friend myuint<2> operator+(myuint<2> lhs, const myuint<2>& rhs){
+            lhs+= rhs;
+            return lhs;
+        }
+        // (compound assignment) subtraction of rhs from this
+        myuint<2>& operator-=(const myuint<2>& rhs){
+            num -= rhs.num;
+            return *this;
+        }
+        // subtraction operator reuses compound assignment
+        friend myuint<2> operator-(myuint<2> lhs, const myuint<2>& rhs){
+            lhs-= rhs;
+            return lhs;
+        }
+        // (compound assignment) right shift of this by rhs
+        myuint<2>& operator>>=(const uint& rhs){
+            num >>= rhs;
+            return *this;
+        }
+        // right shift operator reuses compound assignment
+        friend myuint<2> operator>>(myuint<2> lhs, const uint& rhs){
+            lhs>>= rhs;
+            return lhs;
+        }
+        // (compound assignment) left shift of this by rhs
+        myuint<2>& operator<<=(const uint& rhs){
+            num <<= rhs;
+            return *this;
+        }
+        // left shift operator reuses compound assignment
+        friend myuint<2> operator<<(myuint<2> lhs, const uint& rhs){
+            lhs<<= rhs;
+            return lhs;
+        }
+        // Multiplcation of rhs to lhs
+        myuint<2>& operator*=(const myuint<2>& rhs){
+            num *= rhs.num;
+            return *this;
+        }
+        // multiplication operator reuses compound assignment
+        friend myuint<2> operator*(myuint<2> lhs, const myuint<2>& rhs){
+            lhs *=rhs;
+            return lhs;
+        }
+        // (compound assignment) division of lhs by rhs
+        myuint<2>& operator/=(myuint<2> rhs){
+            num /= rhs.num;
+            return *this;
+        }
+        // multiplication operator reuses compound assignment
+        friend myuint<2> operator/(myuint<2> lhs, myuint<2> rhs){
+            lhs /=rhs;
+            return lhs;
+        }
+        // modulus function, gives answer to lhs mod rhs
+        myuint<2>& operator%=(myuint<2> rhs){
+            num %= rhs.num;
+            return *this;
+        }
+        // modulus operator reuses compound assignment
+        friend myuint<2> operator%(myuint<2> lhs, myuint<2> rhs){
+            lhs %=rhs;
+            return lhs;
+        }
+        //Comparison operators
+        inline friend bool operator< (const myuint<2>& lhs, const myuint<2>& rhs){ 
+            return lhs.num < rhs.num;
+        }
+        inline friend bool operator> (const myuint<2>& lhs, const myuint<2>& rhs){ 
+            return rhs < lhs; 
+        }
+        inline friend bool operator<=(const myuint<2>& lhs, const myuint<2>& rhs){ 
+            return !(lhs > rhs); 
+        }
+        inline friend bool operator>=(const myuint<2>& lhs, const myuint<2>& rhs){ 
+            return !(lhs < rhs); 
+        }
+        inline friend bool operator==(const myuint<2>& lhs, const myuint<2>& rhs){ 
+            return lhs.num == rhs.num;
+        }
+        inline friend bool operator!=(const myuint<2>& lhs, const myuint<2>& rhs){ 
+            return !(lhs==rhs); 
+        }
+        //Write to stream (convert to base 10)
+        friend std::ostream& operator<<(std::ostream& os, const myuint<2>& bigint){
+            os << bigint.num;
+            return os;
+        }
+        //Quick function that returns if value is equal to 0
+        bool is_zero(){
+            return num==0;
+        }
+        //Gets base 10 representation of uint
+        std::string to_string() const {
+            return std::to_string(num);
+        }
+};
+template <>
+class myuint<4>{
+    private:
+        uint8_t num =0;
+    public:
+        //Default constructor - creates structure with value 0
+        myuint(){
+        }
+        //Unsigned Integer constructor
+        myuint(uint8_t num){
+            this->num = num;
+        }
+        /* String constructor (for base 10) 
+           Accepts a string representation of an integer
+           Behaviour when number too large is undefined
+        */
+        myuint(std::string s){    
+            num = std::stoul(s);
+        }
+        // Copy assignment
+        myuint<4>& operator=(const myuint<4>& other){
+            // Guard self assignment
+            if (this == &other){
+                return *this;
+            }
+            num = other.num;
+            return *this;
+        }
+        // prefix increment
+        myuint<4>& operator++(){
+            num++;
+            return *this; // return new value by reference
+        }
+        // postfix increment
+        myuint<4> operator++(int){
+            myuint<4> old = *this; // copy old value
+            operator++();  // prefix increment
+            return old;    // return old value
+        }   
+        // prefix decrement
+        myuint<4>& operator--(){
+            num--;
+            return *this; // return new value by reference
+        }
+        // postfix decrement
+        myuint<4> operator--(int){
+            myuint<4> old = *this; // copy old value
+            operator--();  // prefix decrement
+            return old;    // return old value
+        }
+        // (compound assignment) addition of rhs to this
+        myuint<4>& operator+=(const myuint<4>& rhs){
+            num += rhs.num;
+            return *this;
+        }
+        // addition operator reuses compound assignment
+        friend myuint<4> operator+(myuint<4> lhs, const myuint<4>& rhs){
+            lhs+= rhs;
+            return lhs;
+        }
+        // (compound assignment) subtraction of rhs from this
+        myuint<4>& operator-=(const myuint<4>& rhs){
+            num -= rhs.num;
+            return *this;
+        }
+        // subtraction operator reuses compound assignment
+        friend myuint<4> operator-(myuint<4> lhs, const myuint<4>& rhs){
+            lhs-= rhs;
+            return lhs;
+        }
+        // (compound assignment) right shift of this by rhs
+        myuint<4>& operator>>=(const uint& rhs){
+            num >>= rhs;
+            return *this;
+        }
+        // right shift operator reuses compound assignment
+        friend myuint<4> operator>>(myuint<4> lhs, const uint& rhs){
+            lhs>>= rhs;
+            return lhs;
+        }
+        // (compound assignment) left shift of this by rhs
+        myuint<4>& operator<<=(const uint& rhs){
+            num <<= rhs;
+            return *this;
+        }
+        // left shift operator reuses compound assignment
+        friend myuint<4> operator<<(myuint<4> lhs, const uint& rhs){
+            lhs<<= rhs;
+            return lhs;
+        }
+        // Multiplcation of rhs to lhs
+        myuint<4>& operator*=(const myuint<4>& rhs){
+            num *= rhs.num;
+            return *this;
+        }
+        // multiplication operator reuses compound assignment
+        friend myuint<4> operator*(myuint<4> lhs, const myuint<4>& rhs){
+            lhs *=rhs;
+            return lhs;
+        }
+        // (compound assignment) division of lhs by rhs
+        myuint<4>& operator/=(myuint<4> rhs){
+            num /= rhs.num;
+            return *this;
+        }
+        // multiplication operator reuses compound assignment
+        friend myuint<4> operator/(myuint<4> lhs, myuint<4> rhs){
+            lhs /=rhs;
+            return lhs;
+        }
+        // modulus function, gives answer to lhs mod rhs
+        myuint<4>& operator%=(myuint<4> rhs){
+            num %= rhs.num;
+            return *this;
+        }
+        // modulus operator reuses compound assignment
+        friend myuint<4> operator%(myuint<4> lhs, myuint<4> rhs){
+            lhs %=rhs;
+            return lhs;
+        }
+        //Comparison operators
+        inline friend bool operator< (const myuint<4>& lhs, const myuint<4>& rhs){ 
+            return lhs.num < rhs.num;
+        }
+        inline friend bool operator> (const myuint<4>& lhs, const myuint<4>& rhs){ 
+            return rhs < lhs; 
+        }
+        inline friend bool operator<=(const myuint<4>& lhs, const myuint<4>& rhs){ 
+            return !(lhs > rhs); 
+        }
+        inline friend bool operator>=(const myuint<4>& lhs, const myuint<4>& rhs){ 
+            return !(lhs < rhs); 
+        }
+        inline friend bool operator==(const myuint<4>& lhs, const myuint<4>& rhs){ 
+            return lhs.num == rhs.num;
+        }
+        inline friend bool operator!=(const myuint<4>& lhs, const myuint<4>& rhs){ 
+            return !(lhs==rhs); 
+        }
+        //Write to stream (convert to base 10)
+        friend std::ostream& operator<<(std::ostream& os, const myuint<4>& bigint){
+            os << bigint.num;
+            return os;
+        }
+        //Quick function that returns if value is equal to 0
+        bool is_zero(){
+            return num==0;
+        }
+        //Gets base 10 representation of uint
+        std::string to_string() const {
+            return std::to_string(num);
+        }
+};
+template <>
+class myuint<8>{
+    private:
+        uint8_t num =0;
+    public:
+        //Default constructor - creates structure with value 0
+        myuint(){
+        }
+        //Unsigned Integer constructor
+        myuint(uint8_t num){
+            this->num = num;
+        }
+        /* String constructor (for base 10) 
+           Accepts a string representation of an integer
+           Behaviour when number too large is undefined
+        */
+        myuint(std::string s){    
+            num = std::stoul(s);
+        }
+        // Copy assignment
+        myuint<8>& operator=(const myuint<8>& other){
+            // Guard self assignment
+            if (this == &other){
+                return *this;
+            }
+            num = other.num;
+            return *this;
+        }
+        // prefix increment
+        myuint<8>& operator++(){
+            num++;
+            return *this; // return new value by reference
+        }
+        // postfix increment
+        myuint<8> operator++(int){
+            myuint<8> old = *this; // copy old value
+            operator++();  // prefix increment
+            return old;    // return old value
+        }   
+        // prefix decrement
+        myuint<8>& operator--(){
+            num--;
+            return *this; // return new value by reference
+        }
+        // postfix decrement
+        myuint<8> operator--(int){
+            myuint<8> old = *this; // copy old value
+            operator--();  // prefix decrement
+            return old;    // return old value
+        }
+        // (compound assignment) addition of rhs to this
+        myuint<8>& operator+=(const myuint<8>& rhs){
+            num += rhs.num;
+            return *this;
+        }
+        // addition operator reuses compound assignment
+        friend myuint<8> operator+(myuint<8> lhs, const myuint<8>& rhs){
+            lhs+= rhs;
+            return lhs;
+        }
+        // (compound assignment) subtraction of rhs from this
+        myuint<8>& operator-=(const myuint<8>& rhs){
+            num -= rhs.num;
+            return *this;
+        }
+        // subtraction operator reuses compound assignment
+        friend myuint<8> operator-(myuint<8> lhs, const myuint<8>& rhs){
+            lhs-= rhs;
+            return lhs;
+        }
+        // (compound assignment) right shift of this by rhs
+        myuint<8>& operator>>=(const uint& rhs){
+            num >>= rhs;
+            return *this;
+        }
+        // right shift operator reuses compound assignment
+        friend myuint<8> operator>>(myuint<8> lhs, const uint& rhs){
+            lhs>>= rhs;
+            return lhs;
+        }
+        // (compound assignment) left shift of this by rhs
+        myuint<8>& operator<<=(const uint& rhs){
+            num <<= rhs;
+            return *this;
+        }
+        // left shift operator reuses compound assignment
+        friend myuint<8> operator<<(myuint<8> lhs, const uint& rhs){
+            lhs<<= rhs;
+            return lhs;
+        }
+        // Multiplcation of rhs to lhs
+        myuint<8>& operator*=(const myuint<8>& rhs){
+            num *= rhs.num;
+            return *this;
+        }
+        // multiplication operator reuses compound assignment
+        friend myuint<8> operator*(myuint<8> lhs, const myuint<8>& rhs){
+            lhs *=rhs;
+            return lhs;
+        }
+        // (compound assignment) division of lhs by rhs
+        myuint<8>& operator/=(myuint<8> rhs){
+            num /= rhs.num;
+            return *this;
+        }
+        // multiplication operator reuses compound assignment
+        friend myuint<8> operator/(myuint<8> lhs, myuint<8> rhs){
+            lhs /=rhs;
+            return lhs;
+        }
+        // modulus function, gives answer to lhs mod rhs
+        myuint<8>& operator%=(myuint<8> rhs){
+            num %= rhs.num;
+            return *this;
+        }
+        // modulus operator reuses compound assignment
+        friend myuint<8> operator%(myuint<8> lhs, myuint<8> rhs){
+            lhs %=rhs;
+            return lhs;
+        }
+        //Comparison operators
+        inline friend bool operator< (const myuint<8>& lhs, const myuint<8>& rhs){ 
+            return lhs.num < rhs.num;
+        }
+        inline friend bool operator> (const myuint<8>& lhs, const myuint<8>& rhs){ 
+            return rhs < lhs; 
+        }
+        inline friend bool operator<=(const myuint<8>& lhs, const myuint<8>& rhs){ 
+            return !(lhs > rhs); 
+        }
+        inline friend bool operator>=(const myuint<8>& lhs, const myuint<8>& rhs){ 
+            return !(lhs < rhs); 
+        }
+        inline friend bool operator==(const myuint<8>& lhs, const myuint<8>& rhs){ 
+            return lhs.num == rhs.num;
+        }
+        inline friend bool operator!=(const myuint<8>& lhs, const myuint<8>& rhs){ 
+            return !(lhs==rhs); 
+        }
+        //Write to stream (convert to base 10)
+        friend std::ostream& operator<<(std::ostream& os, const myuint<8>& bigint){
+            os << bigint.num;
+            return os;
+        }
+        //Quick function that returns if value is equal to 0
+        bool is_zero(){
+            return num==0;
+        }
+        //Gets base 10 representation of uint
+        std::string to_string() const {
+            return std::to_string(num);
+        }
+};
+template <>
+class myuint<16>{
+    private:
+        uint16_t num =0;
+    public:
+        //Default constructor - creates structure with value 0
+        myuint(){
+        }
+        //Unsigned Integer constructor
+        myuint(uint16_t num){
+            this->num = num;
+        }
+        /* String constructor (for base 10) 
+           Accepts a string representation of an integer
+           Behaviour when number too large is undefined
+        */
+        myuint(std::string s){    
+            num = std::stoul(s);
+        }
+        // Copy assignment
+        myuint<16>& operator=(const myuint<16>& other){
+            // Guard self assignment
+            if (this == &other){
+                return *this;
+            }
+            num = other.num;
+            return *this;
+        }
+        // prefix increment
+        myuint<16>& operator++(){
+            num++;
+            return *this; // return new value by reference
+        }
+        // postfix increment
+        myuint<16> operator++(int){
+            myuint<16> old = *this; // copy old value
+            operator++();  // prefix increment
+            return old;    // return old value
+        }   
+        // prefix decrement
+        myuint<16>& operator--(){
+            num--;
+            return *this; // return new value by reference
+        }
+        // postfix decrement
+        myuint<16> operator--(int){
+            myuint<16> old = *this; // copy old value
+            operator--();  // prefix decrement
+            return old;    // return old value
+        }
+        // (compound assignment) addition of rhs to this
+        myuint<16>& operator+=(const myuint<16>& rhs){
+            num += rhs.num;
+            return *this;
+        }
+        // addition operator reuses compound assignment
+        friend myuint<16> operator+(myuint<16> lhs, const myuint<16>& rhs){
+            lhs+= rhs;
+            return lhs;
+        }
+        // (compound assignment) subtraction of rhs from this
+        myuint<16>& operator-=(const myuint<16>& rhs){
+            num -= rhs.num;
+            return *this;
+        }
+        // subtraction operator reuses compound assignment
+        friend myuint<16> operator-(myuint<16> lhs, const myuint<16>& rhs){
+            lhs-= rhs;
+            return lhs;
+        }
+        // (compound assignment) right shift of this by rhs
+        myuint<16>& operator>>=(const uint& rhs){
+            num >>= rhs;
+            return *this;
+        }
+        // right shift operator reuses compound assignment
+        friend myuint<16> operator>>(myuint<16> lhs, const uint& rhs){
+            lhs>>= rhs;
+            return lhs;
+        }
+        // (compound assignment) left shift of this by rhs
+        myuint<16>& operator<<=(const uint& rhs){
+            num <<= rhs;
+            return *this;
+        }
+        // left shift operator reuses compound assignment
+        friend myuint<16> operator<<(myuint<16> lhs, const uint& rhs){
+            lhs<<= rhs;
+            return lhs;
+        }
+        // Multiplcation of rhs to lhs
+        myuint<16>& operator*=(const myuint<16>& rhs){
+            num *= rhs.num;
+            return *this;
+        }
+        // multiplication operator reuses compound assignment
+        friend myuint<16> operator*(myuint<16> lhs, const myuint<16>& rhs){
+            lhs *=rhs;
+            return lhs;
+        }
+        // (compound assignment) division of lhs by rhs
+        myuint<16>& operator/=(myuint<16> rhs){
+            num /= rhs.num;
+            return *this;
+        }
+        // multiplication operator reuses compound assignment
+        friend myuint<16> operator/(myuint<16> lhs, myuint<16> rhs){
+            lhs /=rhs;
+            return lhs;
+        }
+        // modulus function, gives answer to lhs mod rhs
+        myuint<16>& operator%=(myuint<16> rhs){
+            num %= rhs.num;
+            return *this;
+        }
+        // modulus operator reuses compound assignment
+        friend myuint<16> operator%(myuint<16> lhs, myuint<16> rhs){
+            lhs %=rhs;
+            return lhs;
+        }
+        //Comparison operators
+        inline friend bool operator< (const myuint<16>& lhs, const myuint<16>& rhs){ 
+            return lhs.num < rhs.num;
+        }
+        inline friend bool operator> (const myuint<16>& lhs, const myuint<16>& rhs){ 
+            return rhs < lhs; 
+        }
+        inline friend bool operator<=(const myuint<16>& lhs, const myuint<16>& rhs){ 
+            return !(lhs > rhs); 
+        }
+        inline friend bool operator>=(const myuint<16>& lhs, const myuint<16>& rhs){ 
+            return !(lhs < rhs); 
+        }
+        inline friend bool operator==(const myuint<16>& lhs, const myuint<16>& rhs){ 
+            return lhs.num == rhs.num;
+        }
+        inline friend bool operator!=(const myuint<16>& lhs, const myuint<16>& rhs){ 
+            return !(lhs==rhs); 
+        }
+        //Write to stream (convert to base 10)
+        friend std::ostream& operator<<(std::ostream& os, const myuint<16>& bigint){
+            os << bigint.num;
+            return os;
+        }
+        //Quick function that returns if value is equal to 0
+        bool is_zero(){
+            return num==0;
+        }
+        //Gets base 10 representation of uint
+        std::string to_string() const {
+            return std::to_string(num);
+        }
+};
+template <>
+class myuint<32>{
+    private:
+        uint32_t num =0;
+    public:
+        //Default constructor - creates structure with value 0
+        myuint(){
+        }
+        //Unsigned Integer constructor
+        myuint(uint32_t num){
+            this->num = num;
+        }
+        /* String constructor (for base 10) 
+           Accepts a string representation of an integer
+           Behaviour when number too large is undefined
+        */
+        myuint(std::string s){    
+            num = std::stoul(s);
+        }
+        // Copy assignment
+        myuint<32>& operator=(const myuint<32>& other){
+            // Guard self assignment
+            if (this == &other){
+                return *this;
+            }
+            num = other.num;
+            return *this;
+        }
+        // prefix increment
+        myuint<32>& operator++(){
+            num++;
+            return *this; // return new value by reference
+        }
+        // postfix increment
+        myuint<32> operator++(int){
+            myuint<32> old = *this; // copy old value
+            operator++();  // prefix increment
+            return old;    // return old value
+        }   
+        // prefix decrement
+        myuint<32>& operator--(){
+            num--;
+            return *this; // return new value by reference
+        }
+        // postfix decrement
+        myuint<32> operator--(int){
+            myuint<32> old = *this; // copy old value
+            operator--();  // prefix decrement
+            return old;    // return old value
+        }
+        // (compound assignment) addition of rhs to this
+        myuint<32>& operator+=(const myuint<32>& rhs){
+            num += rhs.num;
+            return *this;
+        }
+        // addition operator reuses compound assignment
+        friend myuint<32> operator+(myuint<32> lhs, const myuint<32>& rhs){
+            lhs+= rhs;
+            return lhs;
+        }
+        // (compound assignment) subtraction of rhs from this
+        myuint<32>& operator-=(const myuint<32>& rhs){
+            num -= rhs.num;
+            return *this;
+        }
+        // subtraction operator reuses compound assignment
+        friend myuint<32> operator-(myuint<32> lhs, const myuint<32>& rhs){
+            lhs-= rhs;
+            return lhs;
+        }
+        // (compound assignment) right shift of this by rhs
+        myuint<32>& operator>>=(const uint& rhs){
+            num >>= rhs;
+            return *this;
+        }
+        // right shift operator reuses compound assignment
+        friend myuint<32> operator>>(myuint<32> lhs, const uint& rhs){
+            lhs>>= rhs;
+            return lhs;
+        }
+        // (compound assignment) left shift of this by rhs
+        myuint<32>& operator<<=(const uint& rhs){
+            num <<= rhs;
+            return *this;
+        }
+        // left shift operator reuses compound assignment
+        friend myuint<32> operator<<(myuint<32> lhs, const uint& rhs){
+            lhs<<= rhs;
+            return lhs;
+        }
+        // Multiplcation of rhs to lhs
+        myuint<32>& operator*=(const myuint<32>& rhs){
+            num *= rhs.num;
+            return *this;
+        }
+        // multiplication operator reuses compound assignment
+        friend myuint<32> operator*(myuint<32> lhs, const myuint<32>& rhs){
+            lhs *=rhs;
+            return lhs;
+        }
+        // (compound assignment) division of lhs by rhs
+        myuint<32>& operator/=(myuint<32> rhs){
+            num /= rhs.num;
+            return *this;
+        }
+        // multiplication operator reuses compound assignment
+        friend myuint<32> operator/(myuint<32> lhs, myuint<32> rhs){
+            lhs /=rhs;
+            return lhs;
+        }
+        // modulus function, gives answer to lhs mod rhs
+        myuint<32>& operator%=(myuint<32> rhs){
+            num %= rhs.num;
+            return *this;
+        }
+        // modulus operator reuses compound assignment
+        friend myuint<32> operator%(myuint<32> lhs, myuint<32> rhs){
+            lhs %=rhs;
+            return lhs;
+        }
+        //Comparison operators
+        inline friend bool operator< (const myuint<32>& lhs, const myuint<32>& rhs){ 
+            return lhs.num < rhs.num;
+        }
+        inline friend bool operator> (const myuint<32>& lhs, const myuint<32>& rhs){ 
+            return rhs < lhs; 
+        }
+        inline friend bool operator<=(const myuint<32>& lhs, const myuint<32>& rhs){ 
+            return !(lhs > rhs); 
+        }
+        inline friend bool operator>=(const myuint<32>& lhs, const myuint<32>& rhs){ 
+            return !(lhs < rhs); 
+        }
+        inline friend bool operator==(const myuint<32>& lhs, const myuint<32>& rhs){ 
+            return lhs.num == rhs.num;
+        }
+        inline friend bool operator!=(const myuint<32>& lhs, const myuint<32>& rhs){ 
+            return !(lhs==rhs); 
+        }
+        //Write to stream (convert to base 10)
+        friend std::ostream& operator<<(std::ostream& os, const myuint<32>& bigint){
+            os << bigint.num;
+            return os;
+        }
+        //Quick function that returns if value is equal to 0
+        bool is_zero(){
+            return num==0;
+        }
+        //Gets base 10 representation of uint
+        std::string to_string() const {
+            return std::to_string(num);
+        }
+};
+template <>
+class myuint<64>{
+    private:
+        uint64_t num =0;
+    public:
+        //Default constructor - creates structure with value 0
+        myuint(){
+        }
+        //Unsigned Integer constructor
+        myuint(uint64_t num){
+            this->num = num;
+        }
+        /* String constructor (for base 10) 
+           Accepts a string representation of an integer
+           Behaviour when number too large is undefined
+        */
+        myuint(std::string s){    
+            num = std::stoul(s);
+        }
+        // Copy assignment
+        myuint<64>& operator=(const myuint<64>& other){
+            // Guard self assignment
+            if (this == &other){
+                return *this;
+            }
+            num = other.num;
+            return *this;
+        }
+        // prefix increment
+        myuint<64>& operator++(){
+            num++;
+            return *this; // return new value by reference
+        }
+        // postfix increment
+        myuint<64> operator++(int){
+            myuint<64> old = *this; // copy old value
+            operator++();  // prefix increment
+            return old;    // return old value
+        }   
+        // prefix decrement
+        myuint<64>& operator--(){
+            num--;
+            return *this; // return new value by reference
+        }
+        // postfix decrement
+        myuint<64> operator--(int){
+            myuint<64> old = *this; // copy old value
+            operator--();  // prefix decrement
+            return old;    // return old value
+        }
+        // (compound assignment) addition of rhs to this
+        myuint<64>& operator+=(const myuint<64>& rhs){
+            num += rhs.num;
+            return *this;
+        }
+        // addition operator reuses compound assignment
+        friend myuint<64> operator+(myuint<64> lhs, const myuint<64>& rhs){
+            lhs+= rhs;
+            return lhs;
+        }
+        // (compound assignment) subtraction of rhs from this
+        myuint<64>& operator-=(const myuint<64>& rhs){
+            num -= rhs.num;
+            return *this;
+        }
+        // subtraction operator reuses compound assignment
+        friend myuint<64> operator-(myuint<64> lhs, const myuint<64>& rhs){
+            lhs-= rhs;
+            return lhs;
+        }
+        // (compound assignment) right shift of this by rhs
+        myuint<64>& operator>>=(const uint& rhs){
+            num >>= rhs;
+            return *this;
+        }
+        // right shift operator reuses compound assignment
+        friend myuint<64> operator>>(myuint<64> lhs, const uint& rhs){
+            lhs>>= rhs;
+            return lhs;
+        }
+        // (compound assignment) left shift of this by rhs
+        myuint<64>& operator<<=(const uint& rhs){
+            num <<= rhs;
+            return *this;
+        }
+        // left shift operator reuses compound assignment
+        friend myuint<64> operator<<(myuint<64> lhs, const uint& rhs){
+            lhs<<= rhs;
+            return lhs;
+        }
+        // Multiplcation of rhs to lhs
+        myuint<64>& operator*=(const myuint<64>& rhs){
+            num *= rhs.num;
+            return *this;
+        }
+        // multiplication operator reuses compound assignment
+        friend myuint<64> operator*(myuint<64> lhs, const myuint<64>& rhs){
+            lhs *=rhs;
+            return lhs;
+        }
+        // (compound assignment) division of lhs by rhs
+        myuint<64>& operator/=(myuint<64> rhs){
+            num /= rhs.num;
+            return *this;
+        }
+        // multiplication operator reuses compound assignment
+        friend myuint<64> operator/(myuint<64> lhs, myuint<64> rhs){
+            lhs /=rhs;
+            return lhs;
+        }
+        // modulus function, gives answer to lhs mod rhs
+        myuint<64>& operator%=(myuint<64> rhs){
+            num %= rhs.num;
+            return *this;
+        }
+        // modulus operator reuses compound assignment
+        friend myuint<64> operator%(myuint<64> lhs, myuint<64> rhs){
+            lhs %=rhs;
+            return lhs;
+        }
+        //Comparison operators
+        inline friend bool operator< (const myuint<64>& lhs, const myuint<64>& rhs){ 
+            return lhs.num < rhs.num;
+        }
+        inline friend bool operator> (const myuint<64>& lhs, const myuint<64>& rhs){ 
+            return rhs < lhs; 
+        }
+        inline friend bool operator<=(const myuint<64>& lhs, const myuint<64>& rhs){ 
+            return !(lhs > rhs); 
+        }
+        inline friend bool operator>=(const myuint<64>& lhs, const myuint<64>& rhs){ 
+            return !(lhs < rhs); 
+        }
+        inline friend bool operator==(const myuint<64>& lhs, const myuint<64>& rhs){ 
+            return lhs.num == rhs.num;
+        }
+        inline friend bool operator!=(const myuint<64>& lhs, const myuint<64>& rhs){ 
+            return !(lhs==rhs); 
+        }
+        //Write to stream (convert to base 10)
+        friend std::ostream& operator<<(std::ostream& os, const myuint<64>& bigint){
+            os << bigint.num;
+            return os;
+        }
+        //Quick function that returns if value is equal to 0
+        bool is_zero(){
+            return num==0;
+        }
+        //Gets base 10 representation of uint
+        std::string to_string() const {
+            return std::to_string(num);
         }
 };
 
