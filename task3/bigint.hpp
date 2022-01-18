@@ -1,6 +1,6 @@
 #pragma once
 #include <iostream>
-#include <string>
+#include <strin
 #include <cmath>
 #include <array>
 #include <assert.h>
@@ -284,7 +284,7 @@ class myuint{
 
                     s1 += s2;
 
-                    myuint<bits> temp;
+                    myuint<bits> temp(0);
                     temp.words[index] = s0 + (get_lo(s1, 32) <<32);
                     if((index+1)<words.size()){
                         uint64_t s3 = get_hi(words[i], 32)* get_hi(rhs.words[j], 32);
@@ -428,11 +428,11 @@ class myuint{
 
 };
 
-/************************************************************************************************************
+/*********************************************************************************************************************
  * From now on, default templates are specified 
  * 1/2/4/8 bit integers take 8 bits
  * 8/16/32/64 bit integers take their respective size bits
- ************************************************************************************************************/
+ *********************************************************************************************************************/
 
 
 template <>
