@@ -10,6 +10,7 @@ public class OrderBook implements OrderObserver{
     private final Crypto cryptoType;
     private double averagePrice=1;
     private double quantityBought=0;
+    private double totalSpent=0;
     private long orderNo =0;
     private SortedSet<BuyOrder> buyOrders;
     private SortedSet<SellOrder> sellOrders;
@@ -26,7 +27,6 @@ public class OrderBook implements OrderObserver{
     
     public boolean addBuyOrder(Trader trader, Crypto crypto, double quantity, double bidPrice){
         BuyOrder order = new BuyOrder(trader, crypto, quantity, bidPrice, ++orderNo);
-        buyOrders.add(order);
         order.addObserver(this);
         
         //since order added, orders should be checked to see if there's a match
@@ -36,8 +36,6 @@ public class OrderBook implements OrderObserver{
     
     public boolean addSellOrder(Trader trader, Crypto crypto, double quantity, double askPrice){
         SellOrder order = new SellOrder(trader, crypto, quantity, askPrice, ++orderNo);
-        sellOrders.add(order);
-        
         order.addObserver(this);
         
         //since order added, orders should be checked to see if there's a match
@@ -69,7 +67,18 @@ public class OrderBook implements OrderObserver{
             }else if(!sellOrder.getOwner().canAfford(cryptoType, volume)){
                 sellOrder.cancelOrder();
             }else{
-                
+                //Deducting + adding funds
+                buyOrder.getOwner().deductBalance(cost);
+                sellOrder.getOwner().deductCrypto(cryptoType, volume);
+                buyOrder.getOwner().addCrypto(cryptoType, volume);
+                sellOrder.getOwner().addBalance(cost);
+                //Filling orders
+                buyOrder.fillOrder(volume);
+                sellOrder.fillOrder(volume);
+                //Finding the new average
+                quantityBought+=volume;
+                totalSpent+=cost;
+                averagePrice = totalSpent/quantityBought;
             }
         }
     }

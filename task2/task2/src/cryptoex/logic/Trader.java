@@ -49,12 +49,28 @@ public class Trader extends User implements OrderObserver{
         this.state= state;
     }
     
-    boolean canAfford(double cost){
+    public boolean canAfford(double cost){
         return balance >=cost;
     }
     
-    boolean canAfford(Crypto crypto, double quantity){
+    public boolean canAfford(Crypto crypto, double quantity){
         return owned_crypto.get(crypto) >= quantity;
+    }
+    
+    public void deductBalance(double cost){
+        balance -=cost;
+    }
+    
+    public void deductCrypto(Crypto crypto, double quantity){
+        owned_crypto.put(crypto, owned_crypto.get(crypto)- quantity);
+    }
+    
+    public void addBalance(double cost){
+        balance +=cost;
+    }
+    
+    public void addCrypto(Crypto crypto, double quantity){
+        owned_crypto.put(crypto, owned_crypto.get(crypto)+ quantity);
     }
 
     @Override

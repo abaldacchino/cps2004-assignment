@@ -30,6 +30,7 @@ public abstract class Order{
         
         observers = new ArrayList<>();
         observers.add(owner);
+        notifyObservers();
     }
     
     private void notifyObservers(){
