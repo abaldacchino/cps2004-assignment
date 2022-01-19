@@ -12,4 +12,6 @@ public abstract class User {
         this.username = username;
         this.password = password;
     }
+    
+    
 }

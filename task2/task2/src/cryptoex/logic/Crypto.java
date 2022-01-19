@@ -24,5 +24,4 @@ public class Crypto {
     public long getSupply(){
         return supply;
     }
-    
 }
