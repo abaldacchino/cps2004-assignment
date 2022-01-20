@@ -7,11 +7,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Trader extends User implements OrderObserver{
     // Contains all pending orders
-    protected ArrayList<Order> pendingOrders = new ArrayList<>();
+    private ArrayList<Order> pendingOrders = new ArrayList<>();
     // Contains all cancelled orders
-    protected ArrayList<Order> cancelledOrders = new ArrayList<>();
+    private ArrayList<Order> cancelledOrders = new ArrayList<>();
     // Contains all successful orders
-    protected ArrayList<Order> successfulOrders = new ArrayList<>();
+    private ArrayList<Order> successfulOrders = new ArrayList<>();
 
     // Maps each Crypto to the amount of that the user owns
     protected final Map<Crypto, Double> ownedCrypto;

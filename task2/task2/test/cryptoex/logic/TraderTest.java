@@ -181,7 +181,7 @@ public class TraderTest {
         
         //Order does not belong to trader, should not be deleted
         assertTrue(trader.cancelOrder(order));
-        assertTrue(trader.cancelledOrders.contains(order));
+        assertTrue(trader.getCancelledOrders().contains(order));
         assertEquals("Cancelled", order.getStatus());
     }
 }
