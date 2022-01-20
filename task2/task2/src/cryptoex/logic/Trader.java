@@ -14,17 +14,17 @@ public class Trader extends User implements OrderObserver{
     protected ArrayList<Order> successfulOrders = new ArrayList<>();
 
     // Maps each Crypto to the amount of that the user owns
-    protected final Map<Crypto, Double> owned_crypto;
+    protected final Map<Crypto, Double> ownedCrypto;
     
     //Stores state of Trader 
     private TraderState state;
 
     //Stores available balance of Trader
-    private double balance;
+    private double balance =0;
 
     public Trader(String name, String username, String password){
         super(name, username, password);
-        owned_crypto = new ConcurrentHashMap<>();
+        ownedCrypto = new ConcurrentHashMap<>();
         state = new PendingTraderState(this);   //user starts off in pending state
     }
     
@@ -54,7 +54,7 @@ public class Trader extends User implements OrderObserver{
     }
     
     public boolean canAfford(Crypto crypto, double quantity){
-        return owned_crypto.get(crypto) >= quantity;
+        return ownedCrypto.getOrDefault(crypto,0.0) >= quantity;
     }
     
     public void deductBalance(double cost){
@@ -62,7 +62,7 @@ public class Trader extends User implements OrderObserver{
     }
     
     public void deductCrypto(Crypto crypto, double quantity){
-        owned_crypto.put(crypto, owned_crypto.get(crypto)- quantity);
+        ownedCrypto.put(crypto, ownedCrypto.getOrDefault(crypto,0.0)- quantity);
     }
     
     public void addBalance(double cost){
@@ -70,7 +70,7 @@ public class Trader extends User implements OrderObserver{
     }
     
     public void addCrypto(Crypto crypto, double quantity){
-        owned_crypto.put(crypto, owned_crypto.get(crypto)+ quantity);
+        ownedCrypto.put(crypto, ownedCrypto.getOrDefault(crypto,0.0)+ quantity);
     }
 
     @Override
@@ -104,8 +104,8 @@ public class Trader extends User implements OrderObserver{
         return successfulOrders;
     }
 
-    public Map<Crypto, Double> getOwned_crypto() {
-        return owned_crypto;
+    public Map<Crypto, Double> getOwnedCrypto() {
+        return ownedCrypto;
     }
 
     public TraderState getState() {

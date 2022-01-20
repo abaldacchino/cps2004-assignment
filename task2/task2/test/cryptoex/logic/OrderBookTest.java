@@ -16,13 +16,6 @@ public class OrderBookTest {
     Trader trader2 = null;
     Trader trader3 = null;
     Crypto crypto = null;
-    BuyOrder buy1 = null;
-    BuyOrder buy2 = null;
-    BuyOrder buy3 = null;
-    SellOrder sell1 = null;
-    SellOrder sell2 = null;
-    SellOrder sell3 = null;
-    SellOrder sell4 = null;
     OrderBook ob = null;
     
     @Before
@@ -31,14 +24,6 @@ public class OrderBookTest {
         trader2 = new Trader("ES", "chidi", "123123");
         trader3 = new Trader("JC", "collier", "123123");
         crypto = new Crypto('a', 10, 1000000000000L);
-        
-        BuyOrder buy1 = new BuyOrder(trader1, crypto, 100, 70, 101);
-        buy2 = new BuyOrder(trader2, crypto, 90, 88, 104);
-        buy3 = new BuyOrder(trader2, crypto, 50, 80, 110);
-        sell1 = new SellOrder(trader3, crypto, 10, 99, 99);
-        sell2 = new SellOrder(trader2, crypto, 110, 100, 100);
-        sell3 = new SellOrder(trader1, crypto, 80, 95, 103);
-        sell4 = new SellOrder(trader1, crypto, 1, 99, 105);
         ob = new OrderBook(crypto);
     }
     
@@ -54,80 +39,223 @@ public class OrderBookTest {
 
     /**
      * Test of addBuyOrder method, of class OrderBook.
+     * Case when limit order is unmatched.
      */
     @Test
-    public void testAddBuyOrder() {
-        System.out.println("addBuyOrder");
-        Trader trader = null;
-        Crypto crypto = null;
-        double quantity = 0.0;
-        double bidPrice = 0.0;
-        OrderBook instance = null;
-        boolean expResult = false;
-        boolean result = instance.addBuyOrder(trader, crypto, quantity, bidPrice);
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+    public void testAddLimitBuyOrderUnmatched() {
+        ob.addSellOrder(trader2, crypto, 30, 50);
+        
+        boolean result = ob.addBuyOrder(trader1, crypto, 50, 40);
+        BuyOrder expectedOrder = new BuyOrder(trader1, crypto, 50, 40, ob.getOrderNo());
+        assertTrue(result);
+        assertTrue(ob.getBuyOrders().contains(expectedOrder));
+    }
+    
+    /**
+     * Test of addBuyOrder method, of class OrderBook.
+     * Case when limit order is fully matched.
+     */
+    @Test
+    public void testAddLimitBuyOrderMatched() {
+        //Adding balance/crypto so order will be completed
+        trader1.addBalance(20000);
+        trader2.addCrypto(crypto, 200);
+        trader3.addCrypto(crypto, 100);
+        ob.addSellOrder(trader2, crypto, 30, 35);
+        ob.addSellOrder(trader3, crypto, 100, 40);
+        
+        boolean result = ob.addBuyOrder(trader1, crypto, 50, 40);
+        BuyOrder expectedOrder = new BuyOrder(trader1, crypto, 50, 40, 
+                ob.getOrderNo());
+        SellOrder sellCompleted = new SellOrder(trader2, crypto, 30, 35, 
+                ob.getOrderNo()-2);
+        assertTrue(result);
+        
+        assertTrue(ob.getFinishedOrders().contains(expectedOrder));
+        assertTrue(ob.getFinishedOrders().contains(sellCompleted));
+    }
+    
+    /**
+     * Test of addBuyOrder method, of class OrderBook.
+     * Case when limit order is unmatched.
+     */
+    @Test
+    public void testAddMarketBuyOrderUnmatched() {
+        boolean result = ob.addBuyOrder(trader1, crypto, 50, 0);
+        BuyOrder expectedOrder = new BuyOrder(trader1, crypto, 50, 0, ob.getOrderNo());
+        assertTrue(result);
+        assertTrue(ob.getBuyOrders().contains(expectedOrder));
+    }
+    
+    /**
+     * Test of addBuyOrder method, of class OrderBook.
+     * Case when limit order is fully matched.
+     */
+    @Test
+    public void testAddMarketBuyOrderMatched() {
+        //Adding balance/crypto so order will be completed
+        trader1.addBalance(200000);
+        trader2.addCrypto(crypto, 200);
+        trader3.addCrypto(crypto, 100);
+        ob.addSellOrder(trader2, crypto, 30, 35);
+        ob.addSellOrder(trader3, crypto, 100, 40);
+        
+        
+        boolean result = ob.addBuyOrder(trader1, crypto, 50, 0);
+        BuyOrder expectedOrder = new BuyOrder(trader1, crypto, 50, 0, 
+                ob.getOrderNo());
+        SellOrder sellCompleted = new SellOrder(trader2, crypto, 30, 35, 
+                ob.getOrderNo()-2);
+        assertTrue(result);
+        
+        assertTrue(ob.getFinishedOrders().contains(expectedOrder));
+        assertTrue(ob.getFinishedOrders().contains(sellCompleted));
+    }
+    
+    /**
+     * Test of addSellOrder method, of class OrderBook.
+     * Case when limit order is matched.
+     */
+    @Test
+    public void testAddLimitSellOrderMatched() {
+        //Adding balance/crypto so order will be completed
+        trader1.addBalance(20000);
+        trader2.addCrypto(crypto, 200);
+        trader3.addCrypto(crypto, 100);
+        ob.addBuyOrder(trader1, crypto, 50, 40);
+        ob.addBuyOrder(trader1, crypto, 10, 45);
+        
+        boolean result = ob.addSellOrder(trader2, crypto, 30, 40);
+        SellOrder expectedOrder = new SellOrder(trader2, crypto, 30, 40, 
+                ob.getOrderNo());
+        BuyOrder buyCompleted = new BuyOrder(trader1, crypto, 10, 45,
+                ob.getOrderNo()-1);
+        
+        assertTrue(result);
+        assertTrue(ob.getFinishedOrders().contains(expectedOrder));
+        assertTrue(ob.getFinishedOrders().contains(buyCompleted));
     }
 
     /**
      * Test of addSellOrder method, of class OrderBook.
+     * Case when limit order is unmatched.
      */
     @Test
-    public void testAddSellOrder() {
-        System.out.println("addSellOrder");
-        Trader trader = null;
-        Crypto crypto = null;
-        double quantity = 0.0;
-        double askPrice = 0.0;
-        OrderBook instance = null;
-        boolean expResult = false;
-        boolean result = instance.addSellOrder(trader, crypto, quantity, askPrice);
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+    public void testAddLimitSellOrderUnmatched() {
+        ob.addBuyOrder(trader1, crypto, 100, 50);
+                
+        boolean result = ob.addSellOrder(trader2, crypto, 30, 40);
+        SellOrder expectedOrder = new SellOrder(trader2, crypto, 30, 40, 
+                ob.getOrderNo());
+        
+        
+        assertTrue(ob.getSellOrders().contains(expectedOrder));
     }
 
     /**
+     * Test of addSellOrder method, of class OrderBook.
+     * Case when limit order is matched.
+     */
+    @Test
+    public void testAddMarketSellOrderMatched() {
+        //Adding balance/crypto so order will be completed
+        trader1.addBalance(20000);
+        trader2.addCrypto(crypto, 200);
+        trader3.addCrypto(crypto, 100);
+        ob.addBuyOrder(trader1, crypto, 50, 40);
+        ob.addBuyOrder(trader1, crypto, 10, 45);
+        
+        boolean result = ob.addSellOrder(trader2, crypto, 30, 0);
+        SellOrder expectedOrder = new SellOrder(trader2, crypto, 30, 0, 
+                ob.getOrderNo());
+        BuyOrder buyCompleted = new BuyOrder(trader1, crypto, 10, 45,
+                ob.getOrderNo()-1);
+        
+        assertTrue(result);
+        assertTrue(ob.getFinishedOrders().contains(expectedOrder));
+        assertTrue(ob.getFinishedOrders().contains(buyCompleted));
+    }
+
+    /**
+     * Test of addSellOrder method, of class OrderBook.
+     * Case when limit order is unmatched.
+     */
+    @Test
+    public void testAddMarketSellOrderUnmatched() {
+        boolean result = ob.addSellOrder(trader2, crypto, 30, 0);
+        SellOrder expectedOrder = new SellOrder(trader2, crypto, 30, 0, 
+                ob.getOrderNo());
+        assertTrue(result);
+        assertTrue(ob.getSellOrders().contains(expectedOrder));
+    }
+    
+    /**
      * Test of existsMatch method, of class OrderBook.
+     * OrderList matches orders immediately, so existsMatch should always be
+     * false - as if a match existed it would be already matched.
      */
     @Test
     public void testExistsMatch() {
-        System.out.println("existsMatch");
-        OrderBook instance = null;
-        boolean expResult = false;
-        boolean result = instance.existsMatch();
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
-    }
-
-    /**
-     * Test of fillOrders method, of class OrderBook.
-     */
-    @Test
-    public void testFillOrders() {
-        System.out.println("fillOrders");
-        OrderBook instance = null;
-        instance.fillOrders();
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        ob.addBuyOrder(trader1, crypto, 100, 50);
+        ob.addBuyOrder(trader2, crypto, 100, 50);
+        ob.addBuyOrder(trader2, crypto, 100, 0);
+        
+        ob.addSellOrder(trader3, crypto, 50, 49);
+        ob.addSellOrder(trader3, crypto, 50, 51);
+        
+        assertFalse(ob.existsMatch());
     }
 
     /**
      * Test of calcPrice method, of class OrderBook.
+     * Case when both are market orders
      */
     @Test
-    public void testCalcPrice() {
-        System.out.println("calcPrice");
-        BuyOrder buyOrder = null;
-        SellOrder sellOrder = null;
-        OrderBook instance = null;
-        double expResult = 0.0;
-        double result = instance.calcPrice(buyOrder, sellOrder);
-        assertEquals(expResult, result, 0.0);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+    public void testCalcPriceBothMarket() {
+        BuyOrder buyOrder = new BuyOrder(trader1, crypto, 100, 0, 1);
+        SellOrder sellOrder = new SellOrder(trader1, crypto, 100, 0, 1);
+        
+        double result = ob.calcPrice(buyOrder, sellOrder);
+        assertEquals(ob.getAveragePrice(), result ,0.0);
+    }
+    
+    /**
+     * Test of calcPrice method, of class OrderBook.
+     * Case when sell order is market.
+     */
+    @Test
+    public void testCalcPriceSellMarket() {
+        BuyOrder buyOrder = new BuyOrder(trader1, crypto, 100, 50, 1);
+        SellOrder sellOrder = new SellOrder(trader1, crypto, 100, 0, 1);
+        
+        double result = ob.calcPrice(buyOrder, sellOrder);
+        assertEquals(50.0, result ,0.0);
+    }
+    
+    /**
+     * Test of calcPrice method, of class OrderBook.
+     * Case when buy order is market.
+     */
+    @Test
+    public void testCalcPriceBuyMarket() {
+        BuyOrder buyOrder = new BuyOrder(trader1, crypto, 100, 0, 1);
+        SellOrder sellOrder = new SellOrder(trader1, crypto, 100, 50, 1);
+        
+        double result = ob.calcPrice(buyOrder, sellOrder);
+        assertEquals(50.0, result ,0.0);
+    }
+    
+    /**
+     * Test of calcPrice method, of class OrderBook.
+     * Case when both are limit.
+     */
+    @Test
+    public void testCalcPriceBothLimit() {
+        BuyOrder buyOrder = new BuyOrder(trader1, crypto, 100, 90, 1);
+        SellOrder sellOrder = new SellOrder(trader1, crypto, 100, 50, 1);
+        
+        double result = ob.calcPrice(buyOrder, sellOrder);
+        assertEquals(50.0, result ,0.0);
     }
 
     /**
@@ -135,12 +263,12 @@ public class OrderBookTest {
      */
     @Test
     public void testUpdate() {
-        System.out.println("update");
-        Order order = null;
-        OrderBook instance = null;
-        instance.update(order);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        ob.addBuyOrder(trader1, crypto, 100, 0);
+        BuyOrder order = ob.getBuyOrders().first();
+        
+        order.cancelOrder();    //update called in here
+        assertTrue(ob.getCancelledOrders().contains(order));
+        assertFalse(ob.getBuyOrders().contains(order));
     }
     
 }

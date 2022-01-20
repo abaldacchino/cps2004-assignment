@@ -21,12 +21,12 @@ public class BuyOrderTest {
     
     /**
      * Test of compareTo method, of class BuyOrder.
-     * Case when a bidPrice less than b bidPrice
+     * Case when a bidPrice greater than b bidPrice
      */
     @Test
     public void testCompareToBidPrice() {
-        a = new BuyOrder(owner, type, quantity, 50, 4);
-        b = new BuyOrder(owner, type, quantity, 100, 5);
+        a = new BuyOrder(owner, type, quantity, 100, 4);
+        b = new BuyOrder(owner, type, quantity, 50, 5);
         
         assertTrue(a.compareTo(b) <0);
         assertTrue(b.compareTo(a) >0);
@@ -41,8 +41,8 @@ public class BuyOrderTest {
         a = new BuyOrder(owner, type, quantity, 50, 4);
         b = new BuyOrder(owner, type, quantity, 50, 5);
         
-        assertTrue(a.compareTo(b) >0);
-        assertTrue(b.compareTo(a) <0);
+        assertTrue(a.compareTo(b) <0);
+        assertTrue(b.compareTo(a) >0);
     }
     
     /**
@@ -57,4 +57,32 @@ public class BuyOrderTest {
         assertTrue(a.compareTo(b) ==0);
         assertTrue(b.compareTo(a) ==0);
     }
+    
+    /**
+     * Test of compareTo method, of class BuyOrder.
+     * Case when a is a market order
+     */
+    @Test
+    public void testCompareToOneMarket() {
+        a = new BuyOrder(owner, type, quantity, 50, 0);
+        b = new BuyOrder(owner, type, quantity, 50, 5);
+        
+        assertTrue(a.compareTo(b) <0);
+        assertTrue(b.compareTo(a) >0);
+    }
+    
+    /**
+     * Test of compareTo method, of class BuyOrder.
+     * Case when a and b both market orders
+     */
+    @Test
+    public void testCompareToBothMarket() {
+        a = new BuyOrder(owner, type, quantity, 50, 0);
+        b = new BuyOrder(owner, type, quantity, 50, 0);
+        
+        assertTrue(a.compareTo(b) ==0);
+        assertTrue(b.compareTo(a) ==0);
+    }
 }
+
+

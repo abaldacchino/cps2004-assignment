@@ -1,6 +1,7 @@
 
 package cryptoex.logic;
 
+import java.util.ArrayList;
 import java.util.NoSuchElementException;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -14,29 +15,38 @@ public class OrderBook implements OrderObserver{
     private long orderNo =0;
     private SortedSet<BuyOrder> buyOrders;
     private SortedSet<SellOrder> sellOrders;
+    private ArrayList<Order> finishedOrders;
+    private ArrayList<Order> cancelledOrders;
     
     public OrderBook(Crypto cryptoType){
         this.cryptoType = cryptoType;
         buyOrders = new TreeSet<>();
         sellOrders = new TreeSet<>();
+        finishedOrders = new ArrayList<>();
+        cancelledOrders = new ArrayList<>();
     }
     
     public Crypto getCryptoType() {
         return cryptoType;
     }
     
-    public boolean addBuyOrder(Trader trader, Crypto crypto, double quantity, double bidPrice){
-        BuyOrder order = new BuyOrder(trader, crypto, quantity, bidPrice, ++orderNo);
+    public boolean addBuyOrder(Trader trader, Crypto crypto, double quantity, 
+            double bidPrice){
+        BuyOrder order = new BuyOrder(trader, crypto, quantity, bidPrice, 
+                ++orderNo);
         order.addObserver(this);
-        
+        buyOrders.add(order);
         //since order added, orders should be checked to see if there's a match
         fillOrders();  
         return true;
     }
     
-    public boolean addSellOrder(Trader trader, Crypto crypto, double quantity, double askPrice){
-        SellOrder order = new SellOrder(trader, crypto, quantity, askPrice, ++orderNo);
+    public boolean addSellOrder(Trader trader, Crypto crypto, double quantity, 
+            double askPrice){
+        SellOrder order = new SellOrder(trader, crypto, quantity, askPrice, 
+                ++orderNo);
         order.addObserver(this);
+        sellOrders.add(order);
         
         //since order added, orders should be checked to see if there's a match
         fillOrders();
@@ -44,20 +54,23 @@ public class OrderBook implements OrderObserver{
     }
     
     public boolean existsMatch(){
-        try{
-            return sellOrders.first().getPrice() <= buyOrders.first().getPrice();
-        }catch(NoSuchElementException e){
+        if(sellOrders.isEmpty() || buyOrders.isEmpty()){
             return false;
+        }else{
+            //Case when buy is a market order (always matches)
+            if(buyOrders.first().getPrice()==0)return true;
+            return sellOrders.first().getPrice() 
+                    <= buyOrders.first().getPrice();
         }
     }
     
-    public void fillOrders(){
+    private void fillOrders(){
         while(existsMatch()){
             BuyOrder buyOrder = buyOrders.first();
             SellOrder sellOrder = sellOrders.first();
             
             double price = calcPrice(buyOrder, sellOrder);
-            double volume = Math.max(buyOrder.getVolLeft(),
+            double volume = Math.min(buyOrder.getVolLeft(),
                     sellOrder.getVolLeft());
             
             double cost = price * volume;
@@ -105,14 +118,44 @@ public class OrderBook implements OrderObserver{
     
     @Override
     public void update(Order order) {
-        if(order.getStatus().equals("Cancelled") || 
-                order.getStatus().equals("Finished")){
-            
+        if(order.getStatus().equals("Cancelled")){
             if(order.getOrderType().equals("BUY")){
                 buyOrders.remove(order);
             }else{
                 sellOrders.remove(order);
             }
+            cancelledOrders.add(order);
+        }if(order.getStatus().equals("Finished")){
+            if(order.getOrderType().equals("BUY")){
+                buyOrders.remove(order);
+            }else{
+                sellOrders.remove(order);
+            }
+            finishedOrders.add(order);
         }
+    }
+
+    public long getOrderNo() {
+        return orderNo;
+    }
+    
+    public double getAveragePrice() {
+        return averagePrice;
+    }
+
+    public SortedSet<BuyOrder> getBuyOrders() {
+        return buyOrders;
+    }
+
+    public SortedSet<SellOrder> getSellOrders() {
+        return sellOrders;
+    }
+
+    public ArrayList<Order> getFinishedOrders() {
+        return finishedOrders;
+    }
+
+    public ArrayList<Order> getCancelledOrders() {
+        return cancelledOrders;
     }
 }

@@ -27,8 +27,8 @@ public class SellOrderTest {
         a = new SellOrder(owner, type, quantity, 50, 4);
         b = new SellOrder(owner, type, quantity, 100, 5);
         
-        assertTrue(a.compareTo(b) >0);
-        assertTrue(b.compareTo(a) <0);
+        assertTrue(a.compareTo(b) <0);
+        assertTrue(b.compareTo(a) >0);
     }
     
     /**
@@ -40,8 +40,8 @@ public class SellOrderTest {
         a = new SellOrder(owner, type, quantity, 50, 4);
         b = new SellOrder(owner, type, quantity, 50, 10);
         
-        assertTrue(a.compareTo(b) >0);
-        assertTrue(b.compareTo(a) <0);
+        assertTrue(a.compareTo(b) <0);
+        assertTrue(b.compareTo(a) >0);
     }
     
     /**

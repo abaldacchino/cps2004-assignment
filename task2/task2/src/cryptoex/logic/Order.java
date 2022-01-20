@@ -98,5 +98,11 @@ public abstract class Order{
         notifyObservers();
     }
     
-    
+    @Override
+    public boolean equals(Object o){
+        if(o == this) return true;
+        if(!(o instanceof Order))return false;
+        Order order = (Order)o;
+        return orderNo == order.getOrderNo();
+    }
 }
