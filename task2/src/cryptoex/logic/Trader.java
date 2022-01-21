@@ -13,15 +13,15 @@ public class Trader extends User implements OrderObserver{
     // Contains all successful orders
     private ArrayList<Order> successfulOrders = new ArrayList<>();
 
+    //Stores available balance of Trader
+    private double balance =0;
     // Maps each Crypto to the amount of that the user owns
-    protected final Map<Crypto, Double> ownedCrypto;
+    private final Map<Crypto, Double> ownedCrypto;
     
     //Stores state of Trader 
     private TraderState state;
 
-    //Stores available balance of Trader
-    private double balance =0;
-
+    
     public Trader(String name, String username, String password){
         super(name, username, password);
         ownedCrypto = new ConcurrentHashMap<>();

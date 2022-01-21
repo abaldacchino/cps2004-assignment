@@ -18,9 +18,6 @@ public class ApprovedTraderStateTest {
     Trader trader = new Trader("Name", "user", "pass");
     ApprovedTraderState approvedState = new ApprovedTraderState(trader);
     
-    @Before
-    public void setUp() {
-    }
     
 
     /**

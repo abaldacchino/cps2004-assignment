@@ -1,4 +1,5 @@
 *.vscode
-*/build.xml
-*/manifest.xml
-*/nbproject/*
+task2/build.xml
+task2/nbproject.mf
+task2/manifest.mf
+task2/build

@@ -19,7 +19,7 @@ public class OrderBookMapTest {
     @Test
     public void testGetInstance() {
         OrderBookMap orderBookMap = OrderBookMap.getInstance();
-        assertTrue(orderBookMap != null);
+        assertTrue(orderBookMap instanceof OrderBookMap);
     }
 
     /**

@@ -6,5 +6,5 @@ package cryptoex.logic;
  * know of any updates to an Order.
  */
 public interface OrderObserver {
-    void update(Order order);
+    public void update(Order order);
 }

@@ -22,10 +22,6 @@ public class AdminTest {
         trader = new Trader("Name", "user", "pass");
     }
     
-    @After
-    public void tearDown() {
-    }
-
     /**
      * Test of approveTrader method, of class Admin.
      */

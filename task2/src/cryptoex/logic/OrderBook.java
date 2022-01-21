@@ -26,10 +26,6 @@ public class OrderBook implements OrderObserver{
         cancelledOrders = new ArrayList<>();
     }
     
-    public Crypto getCryptoType() {
-        return cryptoType;
-    }
-    
     public boolean addBuyOrder(Trader trader, Crypto crypto, double quantity, 
             double bidPrice){
         BuyOrder order = new BuyOrder(trader, crypto, quantity, bidPrice, 
@@ -133,6 +129,10 @@ public class OrderBook implements OrderObserver{
             }
             finishedOrders.add(order);
         }
+    }
+    
+    public Crypto getCryptoType() {
+        return cryptoType;
     }
 
     public long getOrderNo() {
