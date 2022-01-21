@@ -179,7 +179,6 @@ class DAG{
             // hence it makes sense to return without checking rest of graph
             if(count >0)return count;
 
-            bool found = false;
             for(auto root : roots){
                 count += root->remove_node(data);
             }
