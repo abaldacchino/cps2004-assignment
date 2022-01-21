@@ -1,0 +1,2 @@
+Main-Class: cryptoex/test/Main
+Class-Path: ./bin/ ./test_toolchains/junit-4.13.2.jar ./test_toolchains/hamcrest-core-1.3.jar
