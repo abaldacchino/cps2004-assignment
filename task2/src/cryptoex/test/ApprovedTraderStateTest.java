@@ -1,5 +1,6 @@
+package cryptoex.test;
 
-package cryptoex.logic;
+import cryptoex.logic.*;
 
 import org.junit.After;
 import org.junit.AfterClass;

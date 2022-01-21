@@ -1,4 +1,6 @@
-package cryptoex.logic;
+package cryptoex.test;
+
+import cryptoex.logic.*;
 
 import java.util.ArrayList;
 import java.util.Map;

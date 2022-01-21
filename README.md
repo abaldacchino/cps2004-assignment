@@ -15,8 +15,11 @@ run.sh      Runs tests
 Java implementation for a Crypto Exchange
 
 Source files contained in task2/src/cryptoex/logic
-Test files contained in task2/test/cryptoex/logic
-Compile and bash scripts to be added
+Test files contained in task2/src/cryptoex/test
+test_toolchains Contains the appropriate versions of junit and hamcrest-core for use in unit tets
+manifest.mf     Used to compile the classes and specify the main class
+compile.sh      Compiles files
+run.sh          Runs tests
 
 ## Task 3
 Implementation of a Big Integer (storing integers up to 2048 bits)
