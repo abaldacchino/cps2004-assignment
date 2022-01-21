@@ -1,6 +1,5 @@
 #pragma once
 #include <iostream>
-#include <strin
 #include <cmath>
 #include <array>
 #include <assert.h>
